@@ -12,7 +12,11 @@ export type Product = ProductCardProps & {
   sku?: string;
 };
 
-export const getRelatedProducts = (products: Product[], product: Product, limit = 4) =>
+export const getRelatedProducts = <T extends { id: string; categorySlug: string }>(
+  products: T[],
+  product: T,
+  limit = 4
+) =>
   products
     .filter((p) => p.categorySlug === product.categorySlug && p.id !== product.id)
     .slice(0, limit);

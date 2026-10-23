@@ -7,7 +7,7 @@ import SiteHeader from "@/components/SiteHeader";
 import Footer from "@/components/Footer";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { useCart } from "@/context/CartContext";
-import { BANK_TRANSFER } from "@/data/payment";
+import { BANK_TRANSFER, type BankTransferDetails } from "@/data/payment";
 import { formatNaira } from "@/lib/format";
 import { fetchPaymentConfig, submitBankTransferOrder } from "@/lib/api";
 import { addLocalOrder, mapApiStatus } from "@/data/orders";
@@ -57,7 +57,7 @@ export default function BankTransferPage() {
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
-  const [bank, setBank] = useState(BANK_TRANSFER);
+  const [bank, setBank] = useState<BankTransferDetails>(BANK_TRANSFER);
 
   useEffect(() => {
     if (items.length === 0) router.replace("/cart");
