@@ -46,6 +46,7 @@ export type ApiProduct = {
   discountPercent?: number | null;
   categorySlug: string;
   category?: string | null;
+  brand?: string | null;
   colors?: string[];
   variants?: ApiProductVariant[] | null;
   badge?: string | null;
@@ -98,6 +99,7 @@ export function mapApiProduct(p: ApiProduct, opts?: { thumb?: boolean }) {
     discountPercent: p.discountPercent ?? undefined,
     categorySlug: p.categorySlug,
     category: p.category ?? undefined,
+    brand: p.brand || undefined,
     colors: p.colors ?? [],
     variants,
     badge: p.badge ?? undefined,
@@ -336,6 +338,8 @@ type CheckoutItemInput = {
   price: number;
   quantity: number;
   color?: string;
+  size?: string;
+  brand?: string;
 };
 
 type CheckoutShippingInput = {
@@ -408,6 +412,10 @@ export type CheckoutOrder = {
   }[];
   paymentMethod?: string;
   createdAt?: string;
+  shipping?: {
+    method?: string;
+    shippingFee?: number;
+  } | null;
 };
 
 export async function createPaystackOrder(input: {
@@ -478,6 +486,15 @@ export type ApiOrder = {
   status: string;
   invoiceNumber?: string | null;
   createdAt: string;
+  shipping?: {
+    method?: string;
+    shippingFee?: number;
+    fullName?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    phone?: string;
+  } | null;
 };
 
 export async function apiFetchMyOrders(token: string) {

@@ -134,6 +134,8 @@ export default function BankTransferPage() {
           price: i.price,
           quantity: i.quantity,
           color: i.color,
+          size: i.size || i.variantLabel,
+          brand: i.brand,
         })),
         customerNote: draft.customerNote.trim() || undefined,
         shipping: draftToShippingPayload({ ...draft, shippingMethod }),
@@ -158,9 +160,28 @@ export default function BankTransferPage() {
         fee,
         total: order.total ?? total,
         email: order.email,
+        shippingMethod,
+        shippingFee: ship.fee,
       });
       clearCheckoutDraft();
       clearCart();
+      sessionStorage.setItem(
+        "ayanfe-checkout-success",
+        JSON.stringify({
+          orderId: order.id || order._id || invoice,
+          invoice,
+          email: order.email,
+          total: order.total ?? total,
+          subtotal,
+          fee,
+          items: items.map((i) => ({
+            name: i.name,
+            quantity: i.quantity,
+            price: i.price,
+          })),
+          status: order.status || "pending_verification",
+        })
+      );
       router.push(
         `/checkout/success?method=bank_transfer&invoice=${encodeURIComponent(invoice)}&email=${encodeURIComponent(order.email)}`
       );

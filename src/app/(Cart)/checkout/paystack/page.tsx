@@ -52,6 +52,8 @@ export default function PaystackCheckoutPage() {
           price: i.price,
           quantity: i.quantity,
           color: i.color,
+          size: i.size || i.variantLabel,
+          brand: i.brand,
         })),
         customerNote: draft.customerNote.trim() || undefined,
         shipping: draftToShippingPayload({ ...draft, shippingMethod }),
@@ -75,6 +77,8 @@ export default function PaystackCheckoutPage() {
           subtotal,
           fee,
           total: order.total ?? total,
+          shippingMethod,
+          shippingFee: ship.fee,
         })
       );
 

@@ -20,6 +20,8 @@ export type StoredOrder = {
   total: number;
   email?: string;
   receivedAt?: string;
+  shippingMethod?: string;
+  shippingFee?: number;
 };
 
 const STORAGE_KEY = "ayanfe-orders";
@@ -48,7 +50,9 @@ export function mapApiOrder(order: {
   fee: number;
   total: number;
   email?: string;
+  shipping?: { method?: string; shippingFee?: number } | null;
 }): StoredOrder {
+  const shippingFee = order.shipping?.shippingFee ?? 0;
   return {
     id: order.id || order._id || "",
     invoiceNumber: order.invoiceNumber || undefined,
@@ -61,6 +65,8 @@ export function mapApiOrder(order: {
     fee: order.fee,
     total: order.total,
     email: order.email,
+    shippingMethod: order.shipping?.method,
+    shippingFee,
   };
 }
 
