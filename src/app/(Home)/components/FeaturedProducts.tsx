@@ -14,6 +14,7 @@ interface FeaturedProductsProps {
   onAdd?: (product: Product, quantity: number) => void;
   /** Desktop: 4 columns x 4 rows = 16 */
   pageSize?: number;
+  loadError?: string;
 }
 
 function pageWindow(page: number, totalPages: number, maxButtons = 5) {
@@ -156,6 +157,7 @@ export default function FeaturedProducts({
   viewAllHref = "/shop",
   onAdd,
   pageSize = 16,
+  loadError = "",
 }: FeaturedProductsProps) {
   const [page, setPage] = useState(1);
   const [products, setProducts] = useState(initialProducts);
@@ -164,7 +166,7 @@ export default function FeaturedProducts({
     initialTotalPages ?? Math.max(1, Math.ceil((initialTotal ?? initialProducts.length) / pageSize))
   );
   const [pending, startTransition] = useTransition();
-  const [error, setError] = useState("");
+  const [error, setError] = useState(loadError);
 
   const goTo = (next: number) => {
     const target = Math.min(totalPages, Math.max(1, next));
@@ -173,14 +175,10 @@ export default function FeaturedProducts({
     startTransition(async () => {
       try {
         setError("");
-        let data = await apiFetchProductsPage({
-          featured: true,
+        const data = await apiFetchProductsPage({
           page: target,
           limit: pageSize,
         });
-        if (data.total === 0) {
-          data = await apiFetchProductsPage({ page: target, limit: pageSize });
-        }
         setProducts(data.products);
         setTotal(data.total);
         setTotalPages(data.totalPages);
@@ -207,10 +205,10 @@ export default function FeaturedProducts({
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
           <div className="min-w-0">
             <h2 id="featured-title" className="section-heading scroll-mt-28 text-[#6B0080]">
-              Featured products
+              Our products
             </h2>
             <p className="mt-3 text-sm text-neutral-900">
-              Check out our top picks trending items handpicked just for you
+              Browse the full catalog. New picks and everyday essentials in one place.
             </p>
             <p className="mt-1 text-xs text-neutral-500">{resultLabel}</p>
           </div>
@@ -224,7 +222,13 @@ export default function FeaturedProducts({
         </div>
 
         <div className={`mt-6 sm:mt-8 ${pending ? "opacity-70 transition-opacity" : ""}`}>
-          <ProductGrid products={products} onAdd={onAdd} />
+          {products.length === 0 && !error ? (
+            <p className="py-12 text-center text-sm text-neutral-500">
+              No products yet. Check that the store API is online and has an active catalog.
+            </p>
+          ) : (
+            <ProductGrid products={products} onAdd={onAdd} />
+          )}
         </div>
         {error ? <p className="mt-4 text-center text-sm text-red-600">{error}</p> : null}
 

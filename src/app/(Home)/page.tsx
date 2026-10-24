@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { connection } from "next/server";
 import SiteHeader from "@/components/SiteHeader";
 import Footer from "@/components/Footer";
 import Hero from "./components/Hero";
@@ -36,51 +37,46 @@ function CatalogFallback() {
 }
 
 async function HomeCatalog() {
-  let featured: Awaited<ReturnType<typeof apiFetchProductsPage>>["products"] = [];
-  let featuredTotal = 0;
-  let featuredTotalPages = 1;
+  // Request-time fetch so Vercel build does not bake an empty catalog
+  // when the API is unreachable at build.
+  await connection();
+
+  let catalog: Awaited<ReturnType<typeof apiFetchProductsPage>>["products"] = [];
+  let catalogTotal = 0;
+  let catalogTotalPages = 1;
   let arrivals: Awaited<ReturnType<typeof apiFetchProducts>> = [];
+  let loadError = "";
 
   try {
-    const [f, n] = await Promise.all([
-      apiFetchProductsPage({ featured: true, page: 1, limit: FEATURED_PAGE_SIZE }),
+    const [all, newer] = await Promise.all([
+      apiFetchProductsPage({ page: 1, limit: FEATURED_PAGE_SIZE }),
       apiFetchProducts({ newer: true, limit: 8, page: 1 }),
     ]);
-    featured = f.products;
-    featuredTotal = f.total;
-    featuredTotalPages = f.totalPages;
-    arrivals = n;
 
-    // Catalog imports may leave flags unset. Fall back to the full active list.
-    if (featured.length === 0) {
-      const all = await apiFetchProductsPage({ page: 1, limit: FEATURED_PAGE_SIZE });
-      featured = all.products;
-      featuredTotal = all.total;
-      featuredTotalPages = all.totalPages;
-    }
-    if (arrivals.length === 0) {
-      arrivals = (await apiFetchProducts({ limit: 8, page: 1 })).map((p) => ({
-        ...p,
-        badge: p.badge ?? "New arrival",
-      }));
-    } else {
-      arrivals = arrivals.map((p) => ({
-        ...p,
-        badge: p.badge ?? "New arrival",
-      }));
-    }
-  } catch {
-    // API down at build/request time: show empty catalog shells
+    catalog = all.products;
+    catalogTotal = all.total;
+    catalogTotalPages = all.totalPages;
+
+    arrivals =
+      newer.length > 0
+        ? newer.map((p) => ({ ...p, badge: p.badge ?? "New arrival" }))
+        : all.products.slice(0, 8).map((p) => ({
+            ...p,
+            badge: p.badge ?? "New arrival",
+          }));
+  } catch (err) {
+    loadError = err instanceof Error ? err.message : "Could not load products";
   }
 
   return (
     <>
       <NewArrivals products={arrivals} backgroundImage="/assets/hero8.png" />
       <FeaturedProducts
-        products={featured}
-        initialTotal={featuredTotal}
-        initialTotalPages={featuredTotalPages}
+        products={catalog}
+        initialTotal={catalogTotal}
+        initialTotalPages={catalogTotalPages}
         pageSize={FEATURED_PAGE_SIZE}
+        loadError={loadError}
       />
     </>
   );

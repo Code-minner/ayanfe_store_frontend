@@ -21,6 +21,10 @@ const anton = Anton({
 export const metadata: Metadata = {
   title: "Attog Store",
   description: "Discover something you'll love at Attog Store",
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/apple-icon", type: "image/png" }],
+  },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

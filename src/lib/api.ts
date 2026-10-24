@@ -133,12 +133,10 @@ export async function apiFetchProductsPage(opts?: {
   qs.set("page", String(opts?.page ?? 1));
   qs.set("limit", String(opts?.limit ?? 24));
 
-  const res = await fetch(
-    `${API_URL}/products?${qs}`,
-    typeof window === "undefined"
-      ? { next: { revalidate: 30 } }
-      : { cache: "no-store" }
-  );
+  const res = await fetch(`${API_URL}/products?${qs}`, {
+    // Always hit the live API so landing/shop never stick on an empty build-time cache.
+    cache: "no-store",
+  });
   if (!res.ok) throw new Error("Could not load products");
   const data = (await res.json()) as {
     products: ApiProduct[];
