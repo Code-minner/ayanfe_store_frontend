@@ -59,9 +59,9 @@ const DEFAULT_COLUMNS: FooterColumn[] = [
   {
     title: "Legal",
     links: [
+      { label: "Terms & store policies", href: "/terms" },
+      { label: "Payment policy", href: "/payment-policy" },
       { label: "Privacy policy", href: "/privacy-policy" },
-      { label: "Terms & condition", href: "/terms" },
-      { label: "Payment Policy", href: "/payment-policy" },
     ],
   },
 ];
@@ -70,7 +70,11 @@ const DEFAULT_SOCIALS: SocialLink[] = [
   { label: "Instagram", href: "https://instagram.com/", icon: InstagramIcon },
   { label: "X", href: "https://x.com/", icon: XIcon },
   { label: "Facebook", href: "https://facebook.com/", icon: FacebookIcon },
-  { label: "Email", href: "mailto:hello@ayanfestore.com", icon: MailIcon },
+  {
+    label: "Email",
+    href: "mailto:ayanfettograciousbusiness@gmail.com",
+    icon: MailIcon,
+  },
 ];
 
 /* -------------------------------------------------------------------------- */

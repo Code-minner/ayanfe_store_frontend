@@ -43,16 +43,32 @@ async function HomeCatalog() {
 
   try {
     const [f, n] = await Promise.all([
-      apiFetchProductsPage({ page: 1, limit: FEATURED_PAGE_SIZE }),
+      apiFetchProductsPage({ featured: true, page: 1, limit: FEATURED_PAGE_SIZE }),
       apiFetchProducts({ newer: true, limit: 8, page: 1 }),
     ]);
     featured = f.products;
     featuredTotal = f.total;
     featuredTotalPages = f.totalPages;
-    arrivals = n.map((p) => ({
-      ...p,
-      badge: p.badge ?? "New arrival",
-    }));
+    arrivals = n;
+
+    // Catalog imports may leave flags unset. Fall back to the full active list.
+    if (featured.length === 0) {
+      const all = await apiFetchProductsPage({ page: 1, limit: FEATURED_PAGE_SIZE });
+      featured = all.products;
+      featuredTotal = all.total;
+      featuredTotalPages = all.totalPages;
+    }
+    if (arrivals.length === 0) {
+      arrivals = (await apiFetchProducts({ limit: 8, page: 1 })).map((p) => ({
+        ...p,
+        badge: p.badge ?? "New arrival",
+      }));
+    } else {
+      arrivals = arrivals.map((p) => ({
+        ...p,
+        badge: p.badge ?? "New arrival",
+      }));
+    }
   } catch {
     // API down at build/request time: show empty catalog shells
   }

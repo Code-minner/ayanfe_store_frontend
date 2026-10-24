@@ -4,7 +4,7 @@ import ProductCard from "@/components/ProductCard";
 import { useCart } from "@/context/CartContext";
 import { useToast } from "@/context/ToastContext";
 import { useWishlist } from "@/context/WishlistContext";
-import type { Product } from "@/data/products";
+import { cartLineFromProduct, type Product } from "@/data/products";
 
 interface ProductGridProps {
   products: Product[];
@@ -48,7 +48,8 @@ export default function ProductGrid({
           <ProductCard
             name={product.name}
             image={product.image}
-            price={product.price}
+            price={product.priceMin ?? product.price}
+            priceMax={product.priceMax}
             href={product.href}
             badge={product.badge}
             category={hideCategory ? undefined : product.category}
@@ -66,17 +67,7 @@ export default function ProductGrid({
                 toast("Added to cart", "success");
                 return;
               }
-              addItem(
-                {
-                  id: product.id,
-                  name: product.name,
-                  image: product.image,
-                  price: product.price,
-                  href: product.href,
-                  color: product.colors?.[0],
-                },
-                quantity
-              );
+              addItem(cartLineFromProduct(product), quantity);
               toast("Added to cart", "success");
             }}
           />

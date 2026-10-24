@@ -173,10 +173,14 @@ export default function FeaturedProducts({
     startTransition(async () => {
       try {
         setError("");
-        const data = await apiFetchProductsPage({
+        let data = await apiFetchProductsPage({
+          featured: true,
           page: target,
           limit: pageSize,
         });
+        if (data.total === 0) {
+          data = await apiFetchProductsPage({ page: target, limit: pageSize });
+        }
         setProducts(data.products);
         setTotal(data.total);
         setTotalPages(data.totalPages);

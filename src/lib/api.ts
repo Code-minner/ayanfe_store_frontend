@@ -28,6 +28,13 @@ export type AuthApiUser = {
   avatarUrl?: string | null;
 };
 
+export type ApiProductVariant = {
+  id: string;
+  label: string;
+  price: number;
+  stock: number;
+};
+
 export type ApiProduct = {
   id: string;
   slug: string;
@@ -40,6 +47,7 @@ export type ApiProduct = {
   categorySlug: string;
   category?: string | null;
   colors?: string[];
+  variants?: ApiProductVariant[] | null;
   badge?: string | null;
   subtitle?: string | null;
   stock?: number;
@@ -49,12 +57,34 @@ export type ApiProduct = {
   isNewArrival?: boolean;
 };
 
+function parseVariants(raw: ApiProduct["variants"]): ApiProductVariant[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter(
+      (v): v is ApiProductVariant =>
+        Boolean(v) &&
+        typeof v === "object" &&
+        typeof v.id === "string" &&
+        typeof v.label === "string" &&
+        typeof v.price === "number" &&
+        typeof v.stock === "number"
+    )
+    .map((v) => ({
+      id: v.id,
+      label: v.label,
+      price: v.price,
+      stock: v.stock,
+    }));
+}
+
 export function mapApiProduct(p: ApiProduct, opts?: { thumb?: boolean }) {
   const thumb = opts?.thumb !== false;
   const image = thumb ? optimizeImage(p.image, 480) : p.image;
   const images = (p.images?.length ? p.images : [p.image]).map((src) =>
     thumb ? optimizeImage(src, 720) : src
   );
+  const variants = parseVariants(p.variants);
+  const prices = variants.length ? variants.map((v) => v.price) : [p.price];
   return {
     id: p.id,
     slug: p.slug,
@@ -62,11 +92,14 @@ export function mapApiProduct(p: ApiProduct, opts?: { thumb?: boolean }) {
     image,
     images,
     price: p.price,
+    priceMin: Math.min(...prices),
+    priceMax: Math.max(...prices),
     originalPrice: p.originalPrice ?? undefined,
     discountPercent: p.discountPercent ?? undefined,
     categorySlug: p.categorySlug,
     category: p.category ?? undefined,
     colors: p.colors ?? [],
+    variants,
     badge: p.badge ?? undefined,
     subtitle: p.subtitle ?? undefined,
     stock: p.stock,
@@ -298,7 +331,8 @@ export async function apiRemoveWishlist(token: string, productSlugOrId: string) 
 }
 
 type CheckoutItemInput = {
-  productId?: string;
+  productId: string;
+  variantId?: string;
   name: string;
   image: string;
   price: number;
@@ -307,11 +341,16 @@ type CheckoutItemInput = {
 };
 
 type CheckoutShippingInput = {
+  method?: string;
   fullName?: string;
+  firstName?: string;
+  lastName?: string;
   phone?: string;
+  email?: string;
   address?: string;
   city?: string;
   state?: string;
+  country?: string;
 };
 
 function guestAuthHeaders(): HeadersInit {

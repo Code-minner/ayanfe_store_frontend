@@ -8,6 +8,7 @@ import Footer from "@/components/Footer";
 import { useCart } from "@/context/CartContext";
 import { addLocalOrder, mapApiStatus, mapPaymentStatus } from "@/data/orders";
 import { verifyPaystack } from "@/lib/api";
+import { clearCheckoutDraft } from "@/lib/checkoutDraft";
 
 type PendingPaystack = {
   orderId: string;
@@ -74,6 +75,7 @@ function SuccessBody() {
         });
 
         sessionStorage.removeItem("ayanfe-paystack-pending");
+        clearCheckoutDraft();
         clearCart();
 
         setInvoice(inv);

@@ -7,6 +7,9 @@ interface CheckoutSummaryProps {
   items: CartItem[];
   subtotal: number;
   total: number;
+  fee?: number;
+  shippingFee?: number;
+  shippingLabel?: string;
   onPay: () => void;
   payLabel?: string;
   payDisabled?: boolean;
@@ -16,6 +19,9 @@ export default function CheckoutSummary({
   items,
   subtotal,
   total,
+  fee = 0,
+  shippingFee = 0,
+  shippingLabel = "Shipping",
   onPay,
   payLabel = "Pay Now",
   payDisabled,
@@ -23,7 +29,7 @@ export default function CheckoutSummary({
   return (
     <aside className="h-fit rounded-2xl border border-neutral-200 bg-white p-5 shadow-[0_8px_30px_rgba(0,0,0,0.04)] sm:p-6">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold text-neutral-900">Cart Summary</h2>
+        <h2 className="text-lg font-semibold text-neutral-900">Your order</h2>
         <Link
           href="/cart"
           aria-label="Edit cart"
@@ -65,9 +71,21 @@ export default function CheckoutSummary({
             <dt className="text-neutral-500">Subtotal</dt>
             <dd className="font-medium text-neutral-900">{formatNaira(subtotal)}</dd>
           </div>
+          {fee > 0 && (
+            <div className="flex items-center justify-between gap-4">
+              <dt className="text-neutral-500">Service fee</dt>
+              <dd className="font-medium text-neutral-900">{formatNaira(fee)}</dd>
+            </div>
+          )}
           <div className="flex items-center justify-between gap-4">
+            <dt className="text-neutral-500">{shippingLabel}</dt>
+            <dd className="font-medium text-neutral-900">
+              {shippingFee > 0 ? formatNaira(shippingFee) : "Free"}
+            </dd>
+          </div>
+          <div className="flex items-center justify-between gap-4 border-t border-neutral-100 pt-3">
             <dt className="font-semibold text-neutral-900">Total</dt>
-            <dd className="font-semibold text-neutral-900">{formatNaira(total)}</dd>
+            <dd className="font-semibold text-[#4B0A6B]">{formatNaira(total)}</dd>
           </div>
         </dl>
 

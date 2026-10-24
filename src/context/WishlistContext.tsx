@@ -17,6 +17,7 @@ import {
   apiAddWishlist,
   apiGetWishlist,
   apiRemoveWishlist,
+  mapApiProduct,
   type ApiProduct,
 } from "@/lib/api";
 
@@ -36,24 +37,7 @@ interface WishlistContextValue {
 const WishlistContext = createContext<WishlistContextValue | null>(null);
 
 function toProduct(p: ApiProduct): Product {
-  return {
-    id: p.id,
-    slug: p.slug,
-    name: p.name,
-    image: p.image,
-    images: p.images,
-    price: p.price,
-    originalPrice: p.originalPrice ?? undefined,
-    discountPercent: p.discountPercent ?? undefined,
-    categorySlug: p.categorySlug,
-    category: p.category ?? undefined,
-    colors: p.colors,
-    badge: p.badge ?? undefined,
-    subtitle: p.subtitle ?? undefined,
-    stock: p.stock,
-    description: p.description,
-    href: p.href || `/product/${p.slug}`,
-  };
+  return mapApiProduct(p, { thumb: true });
 }
 
 function productKey(product: Pick<Product, "id" | "slug">) {

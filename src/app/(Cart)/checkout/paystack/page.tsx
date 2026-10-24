@@ -1,40 +1,40 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import SiteHeader from "@/components/SiteHeader";
 import Footer from "@/components/Footer";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { useCart } from "@/context/CartContext";
-import { useAuth } from "@/context/AuthContext";
 import { formatNaira } from "@/lib/format";
 import { createPaystackOrder, initializePaystack } from "@/lib/api";
+import {
+  draftToShippingPayload,
+  loadCheckoutDraft,
+} from "@/lib/checkoutDraft";
+import { getShippingMethod } from "@/data/shipping";
 
 export default function PaystackCheckoutPage() {
   const router = useRouter();
-  const { user } = useAuth();
-  const { items, total, subtotal, fee } = useCart();
-  const [email, setEmail] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
+  const { items, total, subtotal, fee, shippingMethod } = useCart();
+  const [draft] = useState(() => loadCheckoutDraft());
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const ship = getShippingMethod(shippingMethod);
+  const fullName = [draft.firstName, draft.lastName].filter(Boolean).join(" ").trim();
 
   useEffect(() => {
     if (items.length === 0) router.replace("/cart");
   }, [items.length, router]);
 
   useEffect(() => {
-    if (!user) return;
-    setEmail((prev) => prev || user.email || "");
-    setPhone((prev) => prev || user.phone || "");
-    const name = [user.firstName, user.lastName].filter(Boolean).join(" ").trim();
-    if (name) setFullName((prev) => prev || name);
-  }, [user]);
+    if (!draft.email.trim()) router.replace("/checkout");
+  }, [draft.email, router]);
 
   const handlePay = async () => {
-    if (!email.trim() || !email.includes("@")) {
-      setError("Enter a valid email so we can confirm your order.");
+    if (!draft.email.trim() || !draft.email.includes("@")) {
+      setError("Missing checkout email. Go back and complete billing details.");
       return;
     }
     if (items.length === 0) return;
@@ -43,25 +43,23 @@ export default function PaystackCheckoutPage() {
     setError("");
     try {
       const { order } = await createPaystackOrder({
-        email: email.trim(),
+        email: draft.email.trim(),
         items: items.map((i) => ({
-          productId: i.id,
+          productId: i.productId,
+          variantId: i.variantId,
           name: i.name,
           image: i.image,
           price: i.price,
           quantity: i.quantity,
           color: i.color,
         })),
-        shipping: {
-          fullName: fullName.trim() || undefined,
-          phone: phone.trim() || undefined,
-        },
+        customerNote: draft.customerNote.trim() || undefined,
+        shipping: draftToShippingPayload({ ...draft, shippingMethod }),
       });
 
       const orderId = order.id || order._id;
       if (!orderId) throw new Error("Order was created without an id");
 
-      // Keep cart items until verify succeeds so a cancelled payment can retry.
       sessionStorage.setItem(
         "ayanfe-paystack-pending",
         JSON.stringify({
@@ -106,53 +104,43 @@ export default function PaystackCheckoutPage() {
           />
 
           <div className="mt-6 mx-auto max-w-lg rounded-2xl border border-neutral-200 bg-white p-5 shadow-[0_8px_30px_rgba(0,0,0,0.04)] sm:p-6">
-            <h1 className="text-xl font-semibold text-neutral-900 sm:text-2xl">
-              Pay with card or bank
-            </h1>
+            <Link
+              href="/checkout"
+              className="text-sm font-medium text-[#4B0A6B] underline-offset-2 hover:underline"
+            >
+              Edit billing details
+            </Link>
+            <h1 className="mt-3 text-xl font-semibold text-neutral-900 sm:text-2xl">Paystack</h1>
             <p className="mt-2 text-sm text-neutral-500">
-              You&apos;ll be redirected to Paystack to complete payment securely.
+              Confirm your details, then continue to Paystack to pay securely.
             </p>
 
-            <div className="mt-5 rounded-xl bg-[#FAFAFA] px-4 py-3 text-sm">
+            <dl className="mt-5 space-y-2 rounded-xl bg-[#FAFAFA] px-4 py-3 text-sm">
               <div className="flex justify-between gap-3">
-                <span className="text-neutral-500">Amount due</span>
-                <span className="font-semibold text-neutral-900">{formatNaira(total)}</span>
+                <dt className="text-neutral-500">Amount due</dt>
+                <dd className="font-semibold text-neutral-900">{formatNaira(total)}</dd>
               </div>
-            </div>
-
-            <div className="mt-6 space-y-4">
-              <label className="block">
-                <span className="text-sm font-medium text-neutral-800">Email</span>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@email.com"
-                  className="mt-1.5 w-full rounded-xl border border-neutral-200 px-3 py-2.5 text-sm outline-none focus:border-[#4B0A6B]"
-                />
-              </label>
-              <label className="block">
-                <span className="text-sm font-medium text-neutral-800">Full name</span>
-                <input
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Optional"
-                  className="mt-1.5 w-full rounded-xl border border-neutral-200 px-3 py-2.5 text-sm outline-none focus:border-[#4B0A6B]"
-                />
-              </label>
-              <label className="block">
-                <span className="text-sm font-medium text-neutral-800">Phone</span>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="Optional"
-                  className="mt-1.5 w-full rounded-xl border border-neutral-200 px-3 py-2.5 text-sm outline-none focus:border-[#4B0A6B]"
-                />
-              </label>
-            </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-neutral-500">Shipment</dt>
+                <dd className="font-medium text-neutral-900">{ship.title}</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-neutral-500">Email</dt>
+                <dd className="font-medium text-neutral-900">{draft.email}</dd>
+              </div>
+              {fullName && (
+                <div className="flex justify-between gap-3">
+                  <dt className="text-neutral-500">Name</dt>
+                  <dd className="font-medium text-neutral-900">{fullName}</dd>
+                </div>
+              )}
+              {draft.phone && (
+                <div className="flex justify-between gap-3">
+                  <dt className="text-neutral-500">Phone</dt>
+                  <dd className="font-medium text-neutral-900">{draft.phone}</dd>
+                </div>
+              )}
+            </dl>
 
             {error && (
               <p className="mt-4 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">

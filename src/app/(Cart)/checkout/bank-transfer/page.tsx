@@ -11,6 +11,12 @@ import { BANK_TRANSFER, type BankTransferDetails } from "@/data/payment";
 import { formatNaira } from "@/lib/format";
 import { fetchPaymentConfig, submitBankTransferOrder } from "@/lib/api";
 import { addLocalOrder, mapApiStatus } from "@/data/orders";
+import {
+  clearCheckoutDraft,
+  draftToShippingPayload,
+  loadCheckoutDraft,
+} from "@/lib/checkoutDraft";
+import { getShippingMethod } from "@/data/shipping";
 
 function CopyButton({ value, label }: { value: string; label: string }) {
   const [copied, setCopied] = useState(false);
@@ -48,20 +54,23 @@ function CopyButton({ value, label }: { value: string; label: string }) {
 
 export default function BankTransferPage() {
   const router = useRouter();
-  const { items, total, subtotal, fee, clearCart } = useCart();
+  const { items, total, subtotal, fee, shippingMethod, clearCart } = useCart();
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [email, setEmail] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [draft] = useState(() => loadCheckoutDraft());
   const [bank, setBank] = useState<BankTransferDetails>(BANK_TRANSFER);
+  const ship = getShippingMethod(shippingMethod);
 
   useEffect(() => {
     if (items.length === 0) router.replace("/cart");
   }, [items.length, router]);
+
+  useEffect(() => {
+    if (!draft.email.trim()) router.replace("/checkout");
+  }, [draft.email, router]);
 
   useEffect(() => {
     fetchPaymentConfig()
@@ -103,8 +112,8 @@ export default function BankTransferPage() {
   };
 
   const handlePaid = async () => {
-    if (!email.trim() || !email.includes("@")) {
-      setError("Enter a valid email so we can confirm your order.");
+    if (!draft.email.trim() || !draft.email.includes("@")) {
+      setError("Missing checkout email. Go back and complete billing details.");
       return;
     }
     if (!file) {
@@ -116,19 +125,18 @@ export default function BankTransferPage() {
     setError("");
     try {
       const { order } = await submitBankTransferOrder({
-        email: email.trim(),
+        email: draft.email.trim(),
         items: items.map((i) => ({
-          productId: i.id,
+          productId: i.productId,
+          variantId: i.variantId,
           name: i.name,
           image: i.image,
           price: i.price,
           quantity: i.quantity,
           color: i.color,
         })),
-        shipping: {
-          fullName: fullName.trim() || undefined,
-          phone: phone.trim() || undefined,
-        },
+        customerNote: draft.customerNote.trim() || undefined,
+        shipping: draftToShippingPayload({ ...draft, shippingMethod }),
         receipt: file,
       });
 
@@ -151,6 +159,7 @@ export default function BankTransferPage() {
         total: order.total ?? total,
         email: order.email,
       });
+      clearCheckoutDraft();
       clearCart();
       router.push(
         `/checkout/success?method=bank_transfer&invoice=${encodeURIComponent(invoice)}&email=${encodeURIComponent(order.email)}`
@@ -164,9 +173,13 @@ export default function BankTransferPage() {
 
   if (items.length === 0) return null;
 
+  const fullName = [draft.firstName, draft.lastName].filter(Boolean).join(" ").trim();
   const rows = [
     { label: "Amount", value: formatNaira(total), copy: String(total) },
     { label: "Payment Method", value: "Bank Transfer" },
+    { label: "Shipment", value: ship.title },
+    { label: "Email", value: draft.email },
+    ...(fullName ? [{ label: "Name", value: fullName }] : []),
     { label: "Bank Name", value: bank.bankName },
     { label: "Account Name", value: bank.accountName },
     { label: "Account Number", value: bank.accountNumber, copy: bank.accountNumber },
@@ -216,40 +229,6 @@ export default function BankTransferPage() {
                   </div>
                 ))}
               </dl>
-
-              <div className="mt-8 space-y-3">
-                <label className="block text-sm font-medium text-neutral-800">
-                  Email for order confirmation
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@email.com"
-                    className="mt-1.5 w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-sm outline-none focus:border-[#4B0A6B]"
-                  />
-                </label>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="block text-sm font-medium text-neutral-800">
-                    Full name
-                    <input
-                      type="text"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      className="mt-1.5 w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-sm outline-none focus:border-[#4B0A6B]"
-                    />
-                  </label>
-                  <label className="block text-sm font-medium text-neutral-800">
-                    Phone
-                    <input
-                      type="tel"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      className="mt-1.5 w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-sm outline-none focus:border-[#4B0A6B]"
-                    />
-                  </label>
-                </div>
-              </div>
 
               <div className="mt-8">
                 <p className="text-sm font-medium text-neutral-800">Upload proof of payment</p>

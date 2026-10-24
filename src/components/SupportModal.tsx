@@ -1,5 +1,7 @@
 "use client";
 
+import { STORE_CONTACT } from "@/data/contact";
+
 type SupportModalProps = {
   open: boolean;
   onClose: () => void;
@@ -7,6 +9,8 @@ type SupportModalProps = {
 
 export default function SupportModal({ open, onClose }: SupportModalProps) {
   if (!open) return null;
+
+  const { phoneDisplay, phoneTel, whatsapp, emails } = STORE_CONTACT;
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
@@ -48,26 +52,26 @@ export default function SupportModal({ open, onClose }: SupportModalProps) {
           Need Help?
         </h2>
         <p className="mt-2 text-sm text-neutral-600">
-          we&apos;re here to assist with your orders, payments, or deliveries.
+          We&apos;re here to assist with your orders, payments, or deliveries.
         </p>
 
         <div className="mt-6 flex flex-col gap-3">
           <a
-            href="https://wa.me/"
+            href={`https://wa.me/${whatsapp}`}
             target="_blank"
             rel="noreferrer"
             className="rounded-xl bg-[#4B0A6B] px-4 py-3 text-sm font-semibold text-white"
           >
-            Chat with Support
+            Chat on WhatsApp
           </a>
           <a
-            href="tel:+2348000000000"
+            href={`tel:${phoneTel}`}
             className="rounded-xl border border-neutral-300 px-4 py-3 text-sm font-semibold text-neutral-900"
           >
-            Call Support
+            Call {phoneDisplay}
           </a>
           <a
-            href="mailto:ayanfewholesaledev@gmail.com"
+            href={`mailto:${emails[0]}`}
             className="rounded-xl border border-neutral-300 px-4 py-3 text-sm font-semibold text-neutral-900"
           >
             Email Support
@@ -75,11 +79,11 @@ export default function SupportModal({ open, onClose }: SupportModalProps) {
         </div>
 
         <a
-          href="/help"
+          href="/contact"
           className="mt-5 inline-block text-sm font-medium text-[#4B0A6B] underline underline-offset-2"
           onClick={onClose}
         >
-          Check the Help Center
+          Contact & FAQ page
         </a>
       </div>
     </div>

@@ -7,7 +7,7 @@ import ProductCard from "@/components/ProductCard";
 import { useCart } from "@/context/CartContext";
 import { useToast } from "@/context/ToastContext";
 import { useWishlist } from "@/context/WishlistContext";
-import type { Product } from "@/data/products";
+import { cartLineFromProduct, type Product } from "@/data/products";
 
 interface NewArrivalsProps {
   products?: Product[];
@@ -66,7 +66,7 @@ export default function NewArrivals({
   title = "Just landed at Ayanfe Store",
   subtitle = "Our newest pieces, handpicked and ready to ship. Be the first to get them.",
   backgroundImage = "/assets/hero8.png",
-  overlayOpacity = 0.62,
+  overlayOpacity = 0.82,
   perks = ["New styles every week", "Fast, reliable delivery", "Easy returns"],
   viewAllLabel = "Shop all new arrivals",
   viewAllHref = "/shop",
@@ -255,7 +255,8 @@ export default function NewArrivals({
                     <ProductCard
                       name={product.name}
                       image={product.image}
-                      price={product.price}
+                      price={product.priceMin ?? product.price}
+                      priceMax={product.priceMax}
                       href={product.href}
                       badge={product.badge}
                       originalPrice={product.originalPrice}
@@ -273,17 +274,7 @@ export default function NewArrivals({
                           toast("Added to cart", "success");
                           return;
                         }
-                        addItem(
-                          {
-                            id: product.id,
-                            name: product.name,
-                            image: product.image,
-                            price: product.price,
-                            href: product.href,
-                            color: product.colors?.[0],
-                          },
-                          quantity
-                        );
+                        addItem(cartLineFromProduct(product), quantity);
                         toast("Added to cart", "success");
                       }}
                     />

@@ -10,6 +10,8 @@ export interface ProductCardProps {
   name: string;
   image: string;
   price: number;
+  /** When set and different from price, show a from-to range (pack variants). */
+  priceMax?: number;
   href?: string;
 
   imageAlt?: string;
@@ -43,6 +45,7 @@ export default function ProductCard({
   name,
   image,
   price,
+  priceMax,
   href,
   imageAlt,
   badge,
@@ -63,10 +66,25 @@ export default function ProductCard({
   const [heartPop, setHeartPop] = useState(false);
   const [cartPop, setCartPop] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
+  const [imgFailed, setImgFailed] = useState(false);
   const wishlisted = Boolean(isWishlisted);
   const qty = controlledQty ?? localQty;
+  const showRange = priceMax !== undefined && priceMax > price;
+  const remoteHost =
+    typeof image === "string" && /^https?:\/\//i.test(image)
+      ? (() => {
+          try {
+            return new URL(image).hostname;
+          } catch {
+            return "";
+          }
+        })()
+      : "";
+  // WordPress / non-Cloudinary hosts often break next/image optimization; serve directly.
+  const useUnoptimized =
+    Boolean(remoteHost) && !remoteHost.includes("res.cloudinary.com");
 
-  const hasDiscount = originalPrice !== undefined && originalPrice > price;
+  const hasDiscount = !showRange && originalPrice !== undefined && originalPrice > price;
   const percent =
     discountPercent ??
     (hasDiscount ? Math.round((1 - price / originalPrice) * 100) : undefined);
@@ -111,19 +129,27 @@ export default function ProductCard({
             : "aspect-[4/3.4] rounded-xl border border-neutral-200"
         }`}
       >
-        {!imgLoaded && <div className="absolute inset-0 animate-shimmer" aria-hidden />}
-        {href ? (
+        {!imgLoaded && !imgFailed && (
+          <div className="absolute inset-0 animate-shimmer" aria-hidden />
+        )}
+        {imgFailed ? (
+          <div className="absolute inset-0 grid place-items-center bg-neutral-50 text-xs text-neutral-400">
+            No image
+          </div>
+        ) : href ? (
           <Link href={href} aria-label={name} className="absolute inset-0 block">
             <Image
               src={image}
               alt={imageAlt ?? name}
               fill
               priority={priority}
+              unoptimized={useUnoptimized}
               sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
               className={`object-contain p-4 transition-opacity duration-300 ${
                 imgLoaded ? "opacity-100" : "opacity-0"
               }`}
               onLoad={() => setImgLoaded(true)}
+              onError={() => setImgFailed(true)}
             />
           </Link>
         ) : (
@@ -132,11 +158,13 @@ export default function ProductCard({
             alt={imageAlt ?? name}
             fill
             priority={priority}
+            unoptimized={useUnoptimized}
             sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
             className={`object-contain p-4 transition-opacity duration-300 ${
               imgLoaded ? "opacity-100" : "opacity-0"
             }`}
             onLoad={() => setImgLoaded(true)}
+            onError={() => setImgFailed(true)}
           />
         )}
 
@@ -229,7 +257,11 @@ export default function ProductCard({
               compact ? "text-sm" : "text-base"
             }`}
           >
-            <span className="truncate">{formatNaira(price)}</span>
+            <span className="truncate">
+              {showRange
+                ? `${formatNaira(price)} - ${formatNaira(priceMax)}`
+                : formatNaira(price)}
+            </span>
             {hasDiscount && (
               <span className="text-xs font-normal text-neutral-400 line-through sm:text-sm">
                 {formatNaira(originalPrice)}

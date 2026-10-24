@@ -11,7 +11,7 @@ import { useWishlist } from "@/context/WishlistContext";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
-import type { Product } from "@/data/products";
+import { cartLineFromProduct, type Product } from "@/data/products";
 import { apiFetchProducts } from "@/lib/api";
 import Link from "next/link";
 
@@ -83,7 +83,8 @@ export default function WishlistPage() {
                     <ProductCard
                       name={product.name}
                       image={product.image}
-                      price={product.price}
+                      price={product.priceMin ?? product.price}
+                      priceMax={product.priceMax}
                       href={product.href}
                       badge={product.badge}
                       originalPrice={product.originalPrice}
@@ -94,17 +95,7 @@ export default function WishlistPage() {
                         void toggle(product);
                       }}
                       onAdd={(quantity) => {
-                        addItem(
-                          {
-                            id: product.id,
-                            name: product.name,
-                            image: product.image,
-                            price: product.price,
-                            href: product.href,
-                            color: product.colors?.[0],
-                          },
-                          quantity
-                        );
+                        addItem(cartLineFromProduct(product), quantity);
                         toast("Added to cart", "success");
                       }}
                     />

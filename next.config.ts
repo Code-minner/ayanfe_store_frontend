@@ -12,10 +12,17 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "res.cloudinary.com",
+        pathname: "/**",
       },
       {
         protocol: "https",
         hostname: "ayanfettogracious.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "www.ayanfettogracious.com",
+        pathname: "/**",
       },
     ],
   },
