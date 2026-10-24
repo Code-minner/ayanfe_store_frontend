@@ -8,7 +8,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { CHECKOUT_FEE } from "@/data/payment";
 import {
   shippingFeeFor,
   type ShippingMethodId,
@@ -26,6 +25,9 @@ export interface CartItem {
   /** Max packs / units available for this line when added */
   maxStock?: number;
   color?: string;
+  /** Pack / size label (e.g. 36, 5 pieces) */
+  size?: string;
+  brand?: string;
   href?: string;
 }
 
@@ -83,17 +85,27 @@ function normalizeStoredItem(raw: Partial<CartItem> & { id?: string }): CartItem
       ? Math.max(0, Math.floor(raw.maxStock))
       : undefined;
 
+  const size =
+    typeof raw.size === "string"
+      ? raw.size
+      : typeof raw.variantLabel === "string"
+        ? raw.variantLabel
+        : undefined;
+  const brand = typeof raw.brand === "string" ? raw.brand : undefined;
+
   return {
     id: raw.id || lineId({ productId, variantId, color }),
     productId,
     variantId,
-    variantLabel: typeof raw.variantLabel === "string" ? raw.variantLabel : undefined,
+    variantLabel: typeof raw.variantLabel === "string" ? raw.variantLabel : size,
     name: raw.name,
     image: raw.image,
     price,
     quantity: maxStock !== undefined ? Math.min(quantity, Math.max(1, maxStock)) : quantity,
     maxStock,
     color,
+    size,
+    brand,
     href: typeof raw.href === "string" ? raw.href : undefined,
   };
 }
@@ -164,6 +176,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
                 maxStock: cap ?? p.maxStock,
                 price: item.price,
                 variantLabel: item.variantLabel ?? p.variantLabel,
+                size: item.size ?? item.variantLabel ?? p.size,
+                brand: item.brand ?? p.brand,
+                color: item.color ?? p.color,
               }
             : p
         );
@@ -222,16 +237,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(() => {
     const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
-    const fee = items.length > 0 ? CHECKOUT_FEE : 0;
     const shippingFee = items.length > 0 ? shippingFeeFor(shippingMethod) : 0;
     return {
       items,
       itemCount: items.reduce((sum, i) => sum + i.quantity, 0),
       subtotal,
-      fee,
+      fee: 0,
       shippingMethod,
       shippingFee,
-      total: subtotal + fee + shippingFee,
+      total: subtotal + shippingFee,
       setShippingMethod,
       addItem,
       setQuantity,

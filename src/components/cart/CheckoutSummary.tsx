@@ -7,7 +7,6 @@ interface CheckoutSummaryProps {
   items: CartItem[];
   subtotal: number;
   total: number;
-  fee?: number;
   shippingFee?: number;
   shippingLabel?: string;
   onPay: () => void;
@@ -19,7 +18,6 @@ export default function CheckoutSummary({
   items,
   subtotal,
   total,
-  fee = 0,
   shippingFee = 0,
   shippingLabel = "Shipping",
   onPay,
@@ -71,12 +69,6 @@ export default function CheckoutSummary({
             <dt className="text-neutral-500">Subtotal</dt>
             <dd className="font-medium text-neutral-900">{formatNaira(subtotal)}</dd>
           </div>
-          {fee > 0 && (
-            <div className="flex items-center justify-between gap-4">
-              <dt className="text-neutral-500">Service fee</dt>
-              <dd className="font-medium text-neutral-900">{formatNaira(fee)}</dd>
-            </div>
-          )}
           <div className="flex items-center justify-between gap-4">
             <dt className="text-neutral-500">{shippingLabel}</dt>
             <dd className="font-medium text-neutral-900">

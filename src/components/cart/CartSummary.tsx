@@ -5,7 +5,6 @@ import { formatNaira } from "@/lib/format";
 interface CartSummaryProps {
   subtotal: number;
   total: number;
-  fee?: number;
   shippingFee?: number;
   shippingLabel?: string;
   children?: ReactNode;
@@ -20,7 +19,6 @@ interface CartSummaryProps {
 export default function CartSummary({
   subtotal,
   total,
-  fee = 0,
   shippingFee = 0,
   shippingLabel,
   children,
@@ -59,12 +57,6 @@ export default function CartSummary({
           <dt className="text-neutral-500">Subtotal</dt>
           <dd className="font-medium text-neutral-900">{formatNaira(subtotal)}</dd>
         </div>
-        {fee > 0 && (
-          <div className="flex items-center justify-between gap-4">
-            <dt className="text-neutral-500">Service fee</dt>
-            <dd className="font-medium text-neutral-900">{formatNaira(fee)}</dd>
-          </div>
-        )}
         <div className="flex items-center justify-between gap-4">
           <dt className="text-neutral-500">{shippingLabel || "Shipping"}</dt>
           <dd className="font-medium text-neutral-900">

@@ -44,7 +44,6 @@ export default function CheckoutPage() {
   const {
     items,
     subtotal,
-    fee,
     total,
     shippingMethod,
     shippingFee,
