@@ -115,7 +115,7 @@ function WelcomeBadge({ word, phase }: { word: string; phase: "in" | "out" }) {
       <span className="inline-flex items-center gap-2 rounded-full border border-[#4B0A6B]/20 bg-white py-1.5 pl-4 pr-1.5 text-sm text-[#4B0A6B] shadow-[0_12px_32px_rgba(75,10,107,0.12)] sm:py-2 sm:pl-5 sm:pr-2">
         <span className="welcome-dot h-1.5 w-1.5 shrink-0 rounded-full bg-[#4B0A6B]" aria-hidden />
         <span className="font-medium tracking-wide text-[#4B0A6B]/75">{PILL_PREFIX}</span>
-        <span className="relative inline-flex min-w-[8.5rem] items-center justify-center overflow-hidden rounded-full bg-[#4B0A6B] px-3.5 py-1.5 text-center text-sm font-semibold text-white sm:min-w-[9.5rem] sm:px-4">
+        <span className="relative inline-flex min-w-[8.5rem] items-center justify-center overflow-hidden rounded-full bg-[#4B0A6B]/50 px-3.5 py-1.5 text-center text-sm font-semibold text-white sm:min-w-[9.5rem] sm:px-4">
           <span
             key={word}
             className={`block whitespace-nowrap transition-all ease-out motion-reduce:transition-none ${
@@ -171,7 +171,7 @@ export default function Hero() {
         {/* Copy */}
         <div className="relative z-10 max-w-xl">
           <motion.p
-            className="mb-4 font-[family-name:var(--font-anton)] text-xs uppercase tracking-[0.28em] text-[#4B0A6B]/70 sm:text-sm"
+            className="mb-4 font-[family-name:var(--font-anton)] text-xs uppercase tracking-[0.28em] text-[#4B0A6B]/95 sm:text-sm"
             {...fadeUp(0)}
           >
             Attog Store
@@ -188,10 +188,7 @@ export default function Hero() {
             Good finds and{" "}
             <span className="relative inline-block text-[#4B0A6B]">
               great choices
-              <span
-                aria-hidden
-                className="absolute inset-x-0 -bottom-1 -z-10 h-2 rounded-full bg-[#E8CFF0]/90 sm:-bottom-1.5 sm:h-2.5"
-              />
+              
             </span>{" "}
             for every day
           </motion.h1>

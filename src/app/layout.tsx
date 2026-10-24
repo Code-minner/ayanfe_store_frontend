@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { Anton, Poppins } from "next/font/google";
+import { Big_Shoulders, Poppins } from "next/font/google";
 import Providers from "@/components/Providers";
 import "./globals.css";
 
@@ -11,10 +11,10 @@ const poppins = Poppins({
   display: "swap",
 });
 
-const anton = Anton({
-  variable: "--font-anton",
+const bigShoulders = Big_Shoulders({
+  variable: "--font-big-shoulders",
   subsets: ["latin"],
-  weight: "400",
+  weight: ["400", "500", "600", "700", "800"],
   display: "swap",
 });
 
@@ -29,8 +29,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${poppins.variable} ${anton.variable} h-full antialiased`}>
-      <body className="flex min-h-full flex-col font-sans">
+    <html
+      lang="en"
+      className={`${poppins.variable} ${bigShoulders.variable} h-full antialiased`}
+    >
+      <body className={`${poppins.className} flex min-h-full flex-col`}>
         <Providers>{children}</Providers>
       </body>
     </html>
