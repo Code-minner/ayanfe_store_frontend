@@ -41,7 +41,6 @@ export default function OrdersPage() {
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("all");
   const [orders, setOrders] = useState<StoredOrder[]>([]);
   const [selected, setSelected] = useState<StoredOrder | null>(null);
-  const [mode, setMode] = useState<"details" | "invoice" | null>(null);
   const [page, setPage] = useState(1);
   const perPage = 8;
 
@@ -159,10 +158,7 @@ export default function OrdersPage() {
                           <td className="px-2 py-4">
                             <button
                               type="button"
-                              onClick={() => {
-                                setSelected(order);
-                                setMode("details");
-                              }}
+                              onClick={() => setSelected(order)}
                               className="inline-flex items-center gap-1 font-medium text-[#4B0A6B] hover:underline"
                             >
                               View Details
@@ -207,15 +203,7 @@ export default function OrdersPage() {
       </main>
       <Footer />
 
-      <OrderModals
-        order={selected}
-        mode={mode}
-        onClose={() => {
-          setMode(null);
-          setSelected(null);
-        }}
-        onOpenInvoice={() => setMode("invoice")}
-      />
+      <OrderModals order={selected} open={Boolean(selected)} onClose={() => setSelected(null)} />
     </>
   );
 }
