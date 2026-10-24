@@ -174,7 +174,7 @@ export default function Hero() {
             className="mb-4 font-[family-name:var(--font-anton)] text-xs uppercase tracking-[0.28em] text-[#4B0A6B]/70 sm:text-sm"
             {...fadeUp(0)}
           >
-            Ayanfe Store
+            Attog Store
           </motion.p>
 
           <motion.div className="mb-6 sm:mb-8" {...fadeUp(0.08)}>

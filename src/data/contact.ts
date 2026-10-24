@@ -1,5 +1,5 @@
 export const STORE_CONTACT = {
-  brandName: "Ayanfe Store",
+  brandName: "Attog Store",
   addressLines: [
     "4b Fadipe street,",
     "(by Phidel Group of Schools, Seliat branch)",

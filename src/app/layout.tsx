@@ -19,8 +19,8 @@ const anton = Anton({
 });
 
 export const metadata: Metadata = {
-  title: "Ayanfe Store",
-  description: "Discover something you'll love at Ayanfe Store",
+  title: "Attog Store",
+  description: "Discover something you'll love at Attog Store",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

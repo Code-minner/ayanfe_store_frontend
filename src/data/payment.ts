@@ -7,7 +7,7 @@ export type BankTransferDetails = {
 
 export const BANK_TRANSFER: BankTransferDetails = {
   bankName: "First Bank",
-  accountName: "AYANFE STORE",
+  accountName: "ATTOG STORE",
   accountNumber: "9182747839",
 };
 

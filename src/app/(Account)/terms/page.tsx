@@ -3,8 +3,8 @@ import LegalPageShell from "@/components/legal/LegalPageShell";
 import { STORE_HOURS, STORE_POLICY_SECTIONS } from "@/data/storePolicies";
 
 export const metadata: Metadata = {
-  title: "Terms & Store Policies | Ayanfe Store",
-  description: "Opening hours, delivery, stockpile, and store policies for Ayanfe Store.",
+  title: "Terms & Store Policies | Attog Store",
+  description: "Opening hours, delivery, stockpile, and store policies for Attog Store.",
 };
 
 export default function TermsPage() {
@@ -29,7 +29,7 @@ export default function TermsPage() {
       ))}
 
       <p className="text-xs text-neutral-500">
-        By placing an order with Ayanfe Store, you agree to these terms and store policies.
+        By placing an order with Attog Store, you agree to these terms and store policies.
       </p>
     </LegalPageShell>
   );

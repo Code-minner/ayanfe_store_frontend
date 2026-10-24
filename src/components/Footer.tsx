@@ -1,7 +1,6 @@
 import Link from "next/link";
 import type { ComponentType, ReactNode, SVGProps } from "react";
 import {
-  LogoWhite,
   InstagramIcon,
   XIcon,
   FacebookIcon,
@@ -10,6 +9,8 @@ import {
 
 import { Suspense } from "react";
 import CurrentYear from "./CurrentYear";
+import BrandLogo from "@/components/BrandLogo";
+import { BRAND_NAME } from "@/lib/brand";
 
 /* -------------------------------------------------------------------------- */
 /*  Types                                                                      */
@@ -85,23 +86,16 @@ export default function Footer({
   logo,
   columns = DEFAULT_COLUMNS,
   socials = DEFAULT_SOCIALS,
-  brandName = "Ayanfe Store",
+  brandName = BRAND_NAME,
   className = "",
 }: FooterProps) {
   return (
     <footer className={`bg-[#4F0065] text-white ${className}`}>
       <div className="container-page grid gap-12 py-14 lg:grid-cols-[1.8fr_3fr] lg:py-16">
         <div>
-          <Link href="/" aria-label={`${brandName} home`} className="inline-block">
-            {logo ?? (
-              <span className="flex flex-col items-start gap-2">
-                <LogoWhite className="h-10 w-auto text-white" />
-                <span className="font-[family-name:var(--font-anton)] text-2xl uppercase leading-none tracking-wide">
-                  {brandName}
-                </span>
-              </span>
-            )}
-          </Link>
+          <div className="inline-block">
+            {logo ?? <BrandLogo href="/" size="lg" white />}
+          </div>
 
           <ul className="mt-6 flex items-center gap-4">
             {socials.map(({ label, href, icon: Icon }) => (

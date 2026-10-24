@@ -4,8 +4,8 @@ import LegalPageShell from "@/components/legal/LegalPageShell";
 import { PAYMENT_POLICY_ITEMS } from "@/data/storePolicies";
 
 export const metadata: Metadata = {
-  title: "Payment Policy | Ayanfe Store",
-  description: "How payments, confirmation, and delivery fees work at Ayanfe Store.",
+  title: "Payment Policy | Attog Store",
+  description: "How payments, confirmation, and delivery fees work at Attog Store.",
 };
 
 export default function PaymentPolicyPage() {

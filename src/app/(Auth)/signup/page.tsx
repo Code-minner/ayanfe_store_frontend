@@ -61,7 +61,7 @@ export default function SignupPage() {
         Create an account
       </h1>
       <p className="mt-3 text-sm leading-relaxed text-neutral-500">
-        Enter your details to join the Ayanfe marketplace.
+        Enter your details to join the Attog marketplace.
       </p>
 
       <form onSubmit={onSubmit} className="mt-8 space-y-5">

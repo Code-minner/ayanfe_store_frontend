@@ -20,10 +20,10 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const category = getCategory(slug);
-  if (!category) return { title: "Category | Ayanfe Store" };
+  if (!category) return { title: "Category | Attog Store" };
 
   return {
-    title: `${category.name} | Ayanfe Store`,
+    title: `${category.name} | Attog Store`,
     description: category.description,
   };
 }

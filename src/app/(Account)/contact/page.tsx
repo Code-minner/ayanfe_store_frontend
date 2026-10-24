@@ -7,9 +7,9 @@ import FaqAccordion from "@/components/contact/FaqAccordion";
 import { STORE_CONTACT, STORE_FAQS } from "@/data/contact";
 
 export const metadata: Metadata = {
-  title: "Contact Us | Ayanfe Store",
+  title: "Contact Us | Attog Store",
   description:
-    "FAQs, store address, phone and email for Ayanfe Store in Egbeda, Lagos.",
+    "FAQs, store address, phone and email for Attog Store in Egbeda, Lagos.",
 };
 
 export default function ContactPage() {

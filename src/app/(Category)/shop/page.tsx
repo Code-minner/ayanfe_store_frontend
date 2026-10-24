@@ -7,9 +7,9 @@ import CategoryHero from "@/components/CategoryHero";
 import { CATEGORIES, SHOP_ALL, categoryHref } from "@/data/categories";
 
 export const metadata: Metadata = {
-  title: "Shop All | Ayanfe Store",
+  title: "Shop All | Attog Store",
   description:
-    "Browse every category at Ayanfe Store — footwear, fashion, home, gadgets and more.",
+    "Browse every category at Attog Store — footwear, fashion, home, gadgets and more.",
 };
 
 export default function ShopPage() {

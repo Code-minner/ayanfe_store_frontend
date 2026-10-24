@@ -4,8 +4,8 @@ import LegalPageShell from "@/components/legal/LegalPageShell";
 import { STORE_CONTACT } from "@/data/contact";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | Ayanfe Store",
-  description: "How Ayanfe Store uses your personal information.",
+  title: "Privacy Policy | Attog Store",
+  description: "How Attog Store uses your personal information.",
 };
 
 export default function PrivacyPolicyPage() {

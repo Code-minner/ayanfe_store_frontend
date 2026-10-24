@@ -5,8 +5,8 @@ import Footer from "@/components/Footer";
 import SearchResults from "@/components/SearchResults";
 
 export const metadata: Metadata = {
-  title: "Search | Ayanfe Store",
-  description: "Search products at Ayanfe Store.",
+  title: "Search | Attog Store",
+  description: "Search products at Attog Store.",
 };
 
 function SearchFallback() {

@@ -7,9 +7,10 @@ import {
   SearchIcon,
   HeartIcon,
   CartIcon,
-  Logo,
 } from "../../public/svg/svg";
 import AccountMenu from "@/components/AccountMenu";
+import BrandLogo from "@/components/BrandLogo";
+import { BRAND_NAME_CAPS } from "@/lib/brand";
 
 /* -------------------------------------------------------------------------- */
 /*  Types                                                                      */
@@ -46,7 +47,7 @@ export interface HeaderProps {
   className?: string;
 }
 
-const DEFAULT_ANNOUNCEMENT = "Discover something you'll love at AYANFE STORE";
+const DEFAULT_ANNOUNCEMENT = `Discover something you'll love at ${BRAND_NAME_CAPS}`;
 
 const DEFAULT_NAV: NavItem[] = [
   { label: "Shop All", href: "/shop" },
@@ -117,13 +118,9 @@ export default function Header({
       <div className="border-b border-neutral-100 bg-white rounded-t-[30px]">
         <div className="container-page grid grid-cols-[1fr_auto_1fr] items-center gap-3 py-4 sm:gap-4 sm:py-5">
           {/* Left: logo */}
-          <Link
-            href={homeHref}
-            aria-label="Ayanfe Store home"
-            className="justify-self-start text-[#4B0A6B]"
-          >
-            {logo ?? <Logo className="h-7 w-auto sm:h-8" />}
-          </Link>
+          <div className="justify-self-start">
+            {logo ?? <BrandLogo href={homeHref} size="md" priority />}
+          </div>
 
           {/* Centre: links (desktop) */}
           <nav aria-label="Main" className="hidden lg:block">

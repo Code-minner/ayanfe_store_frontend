@@ -63,7 +63,7 @@ export default function NewArrivals({
   onAdd,
   autoPlay = true,
   interval = 4000,
-  title = "Just landed at Ayanfe Store",
+  title = "Just landed at Attog Store",
   subtitle = "Our newest pieces, handpicked and ready to ship. Be the first to get them.",
   backgroundImage = "/assets/hero8.png",
   overlayOpacity = 0.82,

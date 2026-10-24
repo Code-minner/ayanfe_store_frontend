@@ -34,7 +34,7 @@ function LoginForm() {
   return (
     <div className="w-full max-w-md rounded-2xl bg-white px-6 py-10 shadow-[0_12px_40px_rgba(0,0,0,0.08)] sm:px-10 sm:py-12">
       <h1 className="text-xl font-bold tracking-tight text-neutral-900 sm:text-2xl">
-        Welcome Back to Ayanfe Store
+        Welcome Back to Attog Store
       </h1>
       <p className="mt-3 text-sm leading-relaxed text-neutral-500">
         Enter your login details below.

@@ -18,13 +18,13 @@ export async function generateMetadata({
   const { slug } = await params;
   try {
     const product = await apiFetchProductBySlug(slug);
-    if (!product) return { title: "Product | Ayanfe Store" };
+    if (!product) return { title: "Product | Attog Store" };
     return {
-      title: `${product.name} | Ayanfe Store`,
+      title: `${product.name} | Attog Store`,
       description: product.description,
     };
   } catch {
-    return { title: "Product | Ayanfe Store" };
+    return { title: "Product | Attog Store" };
   }
 }
 
