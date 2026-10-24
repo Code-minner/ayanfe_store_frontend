@@ -6,6 +6,7 @@ import { statusBadgeClass, statusLabel } from "@/data/orders";
 import { getShippingMethod, type ShippingMethodId } from "@/data/shipping";
 import BrandLogo from "@/components/BrandLogo";
 import { formatNaira } from "@/lib/format";
+import { printOrderInvoice } from "@/lib/printInvoice";
 
 const STORE_LEGAL_NAME = "Ayanfe T.T.O Gracious";
 const STORE_ADDRESS =
@@ -70,20 +71,28 @@ type Props = {
 export default function OrderModals({ order, mode, onClose, onOpenInvoice }: Props) {
   if (!order || !mode) return null;
 
+  const downloadInvoice = () => {
+    try {
+      printOrderInvoice(order);
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "Could not open invoice");
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 print:static print:block print:p-0">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <button
         type="button"
         aria-label="Close"
-        className="absolute inset-0 bg-black/40 print:hidden"
+        className="absolute inset-0 bg-black/40"
         onClick={onClose}
       />
       <div
         role="dialog"
         aria-modal="true"
-        className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-neutral-200 bg-white p-5 sm:p-7 print:max-h-none print:max-w-none print:overflow-visible print:rounded-none print:border-0 print:p-8 print:shadow-none"
+        className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-neutral-200 bg-white p-5 sm:p-7"
       >
-        <div className="flex items-center justify-between gap-3 print:hidden">
+        <div className="flex items-center justify-between gap-3">
           <button
             type="button"
             onClick={onClose}
@@ -238,15 +247,15 @@ export default function OrderModals({ order, mode, onClose, onOpenInvoice }: Pro
               </div>
             </div>
 
-            <p className="mt-4 text-xs text-neutral-500 print:hidden">
+            <p className="mt-4 text-xs text-neutral-500">
               Date purchase: {formatDateTime(order.date)}
               {order.receivedAt ? ` · Received: ${formatDateTime(order.receivedAt)}` : ""}
             </p>
 
             <button
               type="button"
-              onClick={() => window.print()}
-              className="mt-6 w-full rounded-xl bg-[#4B0A6B] px-4 py-3.5 text-sm font-bold text-white print:hidden"
+              onClick={downloadInvoice}
+              className="mt-6 w-full rounded-xl bg-[#4B0A6B] px-4 py-3.5 text-sm font-bold text-white"
             >
               Download Invoice ( PDF )
             </button>
