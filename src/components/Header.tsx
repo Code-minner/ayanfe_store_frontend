@@ -119,7 +119,7 @@ export default function Header({
         <div className="container-page grid grid-cols-[1fr_auto_1fr] items-center gap-3 py-4 sm:gap-4 sm:py-5">
           {/* Left: logo */}
           <div className="justify-self-start">
-            {logo ?? <BrandLogo href={homeHref} size="md" priority />}
+            {logo ?? <BrandLogo href={homeHref} size="md" />}
           </div>
 
           {/* Centre: links (desktop) */}
