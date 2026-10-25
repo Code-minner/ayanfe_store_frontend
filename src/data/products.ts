@@ -5,6 +5,8 @@ export type ProductVariant = {
   label: string;
   price: number;
   stock: number;
+  /** Max units one customer may buy of this size/option per order. */
+  maxPerOrder?: number;
 };
 
 export type Product = ProductCardProps & {
@@ -31,21 +33,33 @@ export const getRelatedProducts = <T extends { id: string; categorySlug: string 
     .filter((p) => p.categorySlug === product.categorySlug && p.id !== product.id)
     .slice(0, limit);
 
-/** Default pack when adding from a card (cheapest in-stock variant, or base product). */
+function purchaseCap(stock: number, maxPerOrder?: number) {
+  if (maxPerOrder && maxPerOrder > 0) return Math.min(stock, maxPerOrder);
+  return stock;
+}
+
+/** Default option when adding from a card (first in-stock size, or base product). */
 export function cartLineFromProduct(product: Product) {
   const pack =
     product.variants?.find((v) => v.stock > 0) ?? product.variants?.[0];
+  const stock = pack?.stock ?? product.stock ?? 0;
   return {
     productId: product.id,
     variantId: pack?.id,
     variantLabel: pack?.label,
-    name: pack ? `${product.name} - ${pack.label}` : product.name,
+    size: pack?.label,
+    brand: product.brand,
+    name: product.name,
     image: product.image,
     price: pack?.price ?? product.price,
-    maxStock: pack?.stock ?? product.stock,
+    maxStock: purchaseCap(stock, pack?.maxPerOrder),
     href: product.href,
     color: product.colors?.[0],
   };
+}
+
+export function isColorHex(value: string) {
+  return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(value.trim());
 }
 
 /** Pieces implied by labels like "100 pieces" / "5 piece". */

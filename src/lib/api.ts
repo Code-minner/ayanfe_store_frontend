@@ -33,6 +33,7 @@ export type ApiProductVariant = {
   label: string;
   price: number;
   stock: number;
+  maxPerOrder?: number;
 };
 
 export type ApiProduct = {
@@ -75,6 +76,9 @@ function parseVariants(raw: ApiProduct["variants"]): ApiProductVariant[] {
       label: v.label,
       price: v.price,
       stock: v.stock,
+      ...(typeof v.maxPerOrder === "number" && v.maxPerOrder > 0
+        ? { maxPerOrder: Math.floor(v.maxPerOrder) }
+        : {}),
     }));
 }
 

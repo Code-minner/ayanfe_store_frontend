@@ -3,46 +3,54 @@
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import type { Product } from "@/data/products";
-import { piecesFromPackLabel } from "@/data/products";
+import { isColorHex, piecesFromPackLabel } from "@/data/products";
 import { useCart } from "@/context/CartContext";
 import { formatNaira } from "@/lib/format";
 
 const BULK_QTY_PRESETS = [1, 5, 10, 20, 50, 100];
 
+function purchaseCap(stock: number, maxPerOrder?: number) {
+  if (maxPerOrder && maxPerOrder > 0) return Math.min(stock, maxPerOrder);
+  return stock;
+}
+
 export default function ProductDetailClient({ product }: { product: Product }) {
   const { addItem } = useCart();
   const gallery = product.images?.length ? product.images : [product.image];
   const variants = product.variants ?? [];
-  const hasPacks = variants.length > 0;
+  const hasOptions = variants.length > 0;
+  const hasColors = Boolean(product.colors && product.colors.length > 0);
 
   const [activeImage, setActiveImage] = useState(gallery[0] ?? product.image);
-  const [color, setColor] = useState(product.colors?.[0]);
-  const [variantId, setVariantId] = useState(
-    () => variants.find((v) => v.stock > 0)?.id ?? variants[0]?.id
-  );
+  const [color, setColor] = useState<string | undefined>(undefined);
+  const [variantId, setVariantId] = useState<string | undefined>(undefined);
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
+  const [limitMsg, setLimitMsg] = useState("");
 
   const selectedVariant = useMemo(
-    () => variants.find((v) => v.id === variantId) ?? variants[0],
+    () => (variantId ? variants.find((v) => v.id === variantId) : undefined),
     [variants, variantId]
   );
 
-  const unitPrice = hasPacks ? selectedVariant?.price ?? product.price : product.price;
-  const availableStock = hasPacks
-    ? selectedVariant?.stock ?? 0
-    : product.stock ?? 0;
+  const unitPrice = hasOptions ? selectedVariant?.price ?? product.price : product.price;
+  const rawStock = hasOptions ? selectedVariant?.stock ?? 0 : product.stock ?? 0;
+  const maxAllowed = hasOptions
+    ? selectedVariant
+      ? purchaseCap(selectedVariant.stock, selectedVariant.maxPerOrder)
+      : 0
+    : purchaseCap(product.stock ?? 0);
+  const availableStock = maxAllowed;
 
   const priceMin = product.priceMin ?? product.price;
   const priceMax = product.priceMax ?? product.price;
-  const showRange = hasPacks && priceMin !== priceMax;
+  const showRange = hasOptions && priceMin !== priceMax;
 
   const pieces = selectedVariant ? piecesFromPackLabel(selectedVariant.label) : null;
-  const perPiece =
-    pieces && pieces > 1 ? unitPrice / pieces : null;
+  const perPiece = pieces && pieces > 1 ? unitPrice / pieces : null;
 
   const hasDiscount =
-    !hasPacks &&
+    !hasOptions &&
     product.originalPrice !== undefined &&
     product.originalPrice > product.price;
   const percent =
@@ -53,18 +61,41 @@ export default function ProductDetailClient({ product }: { product: Product }) {
 
   useEffect(() => {
     setQty((q) => Math.min(Math.max(1, q), Math.max(1, availableStock || 1)));
+    setLimitMsg("");
   }, [variantId, availableStock]);
 
+  const needsSize = hasOptions && !selectedVariant;
+  const needsColor = hasColors && !color;
+  const canAdd = availableStock > 0 && !needsSize && !needsColor;
+
   const handleAdd = () => {
+    setLimitMsg("");
+    if (needsSize) {
+      setLimitMsg("Please select a size first.");
+      return;
+    }
+    if (needsColor) {
+      setLimitMsg("Please select a color first.");
+      return;
+    }
     if (availableStock <= 0) return;
+
     const packLabel = selectedVariant?.label;
     const safeQty = Math.min(qty, availableStock);
+    if (qty > availableStock && selectedVariant?.maxPerOrder) {
+      setLimitMsg(
+        `You can only buy ${selectedVariant.maxPerOrder} of size ${selectedVariant.label}. Please pick another size for the rest.`
+      );
+    }
+
     addItem(
       {
         productId: product.id,
-        variantId: hasPacks ? selectedVariant?.id : undefined,
+        variantId: hasOptions ? selectedVariant?.id : undefined,
         variantLabel: packLabel,
-        name: packLabel ? `${product.name} - ${packLabel}` : product.name,
+        size: packLabel,
+        brand: product.brand,
+        name: product.name,
         image: product.image,
         price: unitPrice,
         maxStock: availableStock,
@@ -78,6 +109,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
   };
 
   const lineTotal = unitPrice * qty;
+  const optionLooksLikeSize = variants.some((v) => /^\d{2}$/.test(v.label.trim()));
 
   return (
     <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-12">
@@ -180,25 +212,31 @@ export default function ProductDetailClient({ product }: { product: Product }) {
           <div className="rounded-xl border border-neutral-200 bg-white px-4 py-3">
             <dt className="text-neutral-500">Availability</dt>
             <dd className="mt-0.5 font-medium text-neutral-900">
-              {availableStock > 0 ? (
-                <span className="inline-flex items-center gap-1.5 text-green-700">
-                  <span aria-hidden>✓</span>
-                  {availableStock} in stock
-                  {selectedVariant ? ` (${selectedVariant.label})` : ""}
-                </span>
+              {!hasOptions || selectedVariant ? (
+                availableStock > 0 ? (
+                  <span className="inline-flex items-center gap-1.5 text-green-700">
+                    <span aria-hidden>✓</span>
+                    {rawStock} in stock
+                    {selectedVariant ? ` (${selectedVariant.label})` : ""}
+                  </span>
+                ) : (
+                  "Out of stock"
+                )
               ) : (
-                "Out of stock"
+                <span className="text-amber-700">Select a size to see stock</span>
               )}
             </dd>
           </div>
         </dl>
 
-        {hasPacks && (
+        {hasOptions && (
           <div className="mt-6">
             <p className="text-sm font-medium text-neutral-800">
-              Buy in packs <span className="font-normal text-neutral-500">(wholesale friendly)</span>
+              {optionLooksLikeSize ? "Size" : "Size / option"}{" "}
+              <span className="font-normal text-red-600">*</span>
             </p>
-            <div className="mt-2 flex flex-wrap gap-2" role="radiogroup" aria-label="Pack size">
+            <p className="mt-1 text-xs text-neutral-500">Tap a size to select it before adding to cart.</p>
+            <div className="mt-2 flex flex-wrap gap-2" role="radiogroup" aria-label="Size">
               {variants.map((v) => {
                 const selected = selectedVariant?.id === v.id;
                 const soldOut = v.stock <= 0;
@@ -212,7 +250,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                     aria-checked={selected}
                     disabled={soldOut}
                     onClick={() => setVariantId(v.id)}
-                    className={`min-w-[7.5rem] rounded-xl border px-3.5 py-2.5 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                    className={`min-w-[4.5rem] rounded-xl border px-3.5 py-2.5 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                       selected
                         ? "border-[#4B0A6B] bg-[#4B0A6B] text-white"
                         : "border-neutral-200 bg-white text-neutral-900 hover:border-[#4B0A6B]/50"
@@ -223,6 +261,11 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                       {formatNaira(v.price)}
                       {soldOut ? " · sold out" : ` · ${v.stock} left`}
                     </span>
+                    {v.maxPerOrder && v.maxPerOrder > 0 ? (
+                      <span className={`mt-0.5 block text-[11px] ${selected ? "text-white/75" : "text-neutral-400"}`}>
+                        Max {v.maxPerOrder} / order
+                      </span>
+                    ) : null}
                     {each !== null && (
                       <span className={`mt-0.5 block text-[11px] ${selected ? "text-white/75" : "text-neutral-400"}`}>
                         {formatNaira(each)}/pc
@@ -235,12 +278,15 @@ export default function ProductDetailClient({ product }: { product: Product }) {
           </div>
         )}
 
-        {product.colors && product.colors.length > 0 && (
+        {hasColors && (
           <div className="mt-6">
-            <p className="text-sm font-medium text-neutral-800">Color</p>
+            <p className="text-sm font-medium text-neutral-800">
+              Color <span className="font-normal text-red-600">*</span>
+            </p>
             <div className="mt-2 flex flex-wrap gap-2" role="radiogroup" aria-label="Color">
-              {product.colors.map((c) => {
+              {product.colors!.map((c) => {
                 const selected = color === c;
+                const hex = isColorHex(c);
                 return (
                   <button
                     key={c}
@@ -249,11 +295,18 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                     aria-checked={selected}
                     aria-label={`Color ${c}`}
                     onClick={() => setColor(c)}
-                    className={`h-9 w-9 rounded-full border-2 ${
-                      selected ? "border-[#4B0A6B]" : "border-transparent"
+                    className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm transition-colors ${
+                      selected
+                        ? "border-[#4B0A6B] bg-[#F8F1FA] text-[#4B0A6B]"
+                        : "border-neutral-200 bg-white text-neutral-800 hover:border-[#4B0A6B]/40"
                     }`}
-                    style={{ backgroundColor: c }}
-                  />
+                  >
+                    <span
+                      className="h-5 w-5 rounded-full border border-neutral-300"
+                      style={{ backgroundColor: hex ? c : "#e5e5e5" }}
+                    />
+                    {hex ? null : <span className="font-medium">{c}</span>}
+                  </button>
                 );
               })}
             </div>
@@ -262,9 +315,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
 
         <div className="mt-6">
           <div className="flex flex-wrap items-end justify-between gap-2">
-            <p className="text-sm font-medium text-neutral-800">
-              Quantity {hasPacks ? "(number of packs)" : ""}
-            </p>
+            <p className="text-sm font-medium text-neutral-800">Quantity</p>
             <p className="text-sm font-semibold text-neutral-900">
               Line total: {formatNaira(lineTotal)}
             </p>
@@ -275,8 +326,18 @@ export default function ProductDetailClient({ product }: { product: Product }) {
               <button
                 key={n}
                 type="button"
-                disabled={n > availableStock}
-                onClick={() => setQty(n)}
+                disabled={!selectedVariant && hasOptions ? true : n > availableStock}
+                onClick={() => {
+                  if (n > availableStock && selectedVariant?.maxPerOrder) {
+                    setLimitMsg(
+                      `You can only buy ${selectedVariant.maxPerOrder} of size ${selectedVariant.label}. Please pick another size.`
+                    );
+                    setQty(availableStock);
+                    return;
+                  }
+                  setLimitMsg("");
+                  setQty(n);
+                }}
                 className={`rounded-full border px-3 py-1.5 text-xs font-semibold tabular-nums disabled:opacity-40 ${
                   qty === n
                     ? "border-[#4B0A6B] bg-[#4B0A6B] text-white"
@@ -292,7 +353,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
             <button
               type="button"
               aria-label="Decrease quantity"
-              disabled={qty <= 1}
+              disabled={qty <= 1 || needsSize}
               onClick={() => setQty((q) => Math.max(1, q - 1))}
               className="grid h-8 w-8 place-items-center rounded-full text-neutral-800 hover:bg-neutral-50 disabled:opacity-40"
             >
@@ -303,39 +364,75 @@ export default function ProductDetailClient({ product }: { product: Product }) {
               min={1}
               max={Math.max(1, availableStock)}
               value={qty}
+              disabled={needsSize}
               onChange={(e) => {
                 const next = Number(e.target.value);
                 if (!Number.isFinite(next)) return;
-                setQty(Math.min(Math.max(1, Math.floor(next)), Math.max(1, availableStock)));
+                const capped = Math.min(Math.max(1, Math.floor(next)), Math.max(1, availableStock));
+                if (
+                  selectedVariant?.maxPerOrder &&
+                  Math.floor(next) > selectedVariant.maxPerOrder
+                ) {
+                  setLimitMsg(
+                    `You can only buy ${selectedVariant.maxPerOrder} of size ${selectedVariant.label}. Please pick another size.`
+                  );
+                } else {
+                  setLimitMsg("");
+                }
+                setQty(capped);
               }}
-              className="w-16 border-0 bg-transparent text-center text-sm font-semibold tabular-nums outline-none"
-              aria-label="Pack quantity"
+              className="w-16 border-0 bg-transparent text-center text-sm font-semibold tabular-nums outline-none disabled:opacity-40"
+              aria-label="Quantity"
             />
             <button
               type="button"
               aria-label="Increase quantity"
-              disabled={qty >= availableStock}
-              onClick={() => setQty((q) => Math.min(availableStock, q + 1))}
+              disabled={needsSize || qty >= availableStock}
+              onClick={() => {
+                if (qty >= availableStock && selectedVariant?.maxPerOrder) {
+                  setLimitMsg(
+                    `You can only buy ${selectedVariant.maxPerOrder} of size ${selectedVariant.label}. Please pick another size.`
+                  );
+                  return;
+                }
+                setQty((q) => Math.min(availableStock, q + 1));
+              }}
               className="grid h-8 w-8 place-items-center rounded-full text-neutral-800 hover:bg-neutral-50 disabled:opacity-40"
             >
               +
             </button>
           </div>
-          {availableStock > 0 && (
+          {availableStock > 0 && selectedVariant?.maxPerOrder ? (
             <p className="mt-2 text-xs text-neutral-500">
-              Max {availableStock} {hasPacks ? "packs" : "units"} available for this option.
+              Limit {selectedVariant.maxPerOrder} of size {selectedVariant.label} per order
+              ({rawStock} in stock).
             </p>
-          )}
+          ) : availableStock > 0 ? (
+            <p className="mt-2 text-xs text-neutral-500">
+              Max {availableStock} available for this option.
+            </p>
+          ) : null}
+          {limitMsg ? (
+            <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800" role="status">
+              {limitMsg}
+            </p>
+          ) : null}
         </div>
 
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
           <button
             type="button"
             onClick={handleAdd}
-            disabled={availableStock <= 0 || (hasPacks && !selectedVariant)}
+            disabled={!canAdd}
             className="inline-flex flex-1 items-center justify-center rounded-xl bg-[#4B0A6B] px-6 py-3.5 text-sm font-bold uppercase tracking-wide text-white transition-colors hover:bg-[#3a0854] disabled:opacity-50"
           >
-            {added ? "Added to cart" : "Add to cart"}
+            {added
+              ? "Added to cart"
+              : needsSize
+                ? "Select a size"
+                : needsColor
+                  ? "Select a color"
+                  : "Add to cart"}
           </button>
           <a
             href="/cart"
