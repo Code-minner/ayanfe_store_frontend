@@ -17,6 +17,7 @@ export interface ProductCardProps {
   imageAlt?: string;
   badge?: string;
   category?: string;
+  brand?: string;
   subtitle?: string;
   originalPrice?: number;
   discountPercent?: number;
@@ -33,6 +34,10 @@ export interface ProductCardProps {
   priority?: boolean;
   /** Tighter layout for carousels / narrow slides. */
   compact?: boolean;
+  /** When true, card add sends shopper to pick size/color. */
+  requiresOptions?: boolean;
+  /** e.g. "Sizes: 40, 41, 42" shown under the title. */
+  optionsHint?: string;
 }
 
 /* ---------- HELPERS ---------- */
@@ -61,6 +66,8 @@ export default function ProductCard({
   className = "",
   priority = false,
   compact = false,
+  requiresOptions = false,
+  optionsHint,
 }: ProductCardProps) {
   const [localQty, setLocalQty] = useState(1);
   const [heartPop, setHeartPop] = useState(false);
@@ -248,8 +255,11 @@ export default function ProductCard({
             </div>
           ) : null}
 
-          {!compact && subtitle ? (
-            <p className="mt-1 text-sm text-neutral-500">{subtitle}</p>
+          {!compact && (optionsHint || subtitle) ? (
+            <p className="mt-1 text-sm text-neutral-500">{optionsHint || subtitle}</p>
+          ) : null}
+          {compact && optionsHint ? (
+            <p className="mt-0.5 line-clamp-1 text-[11px] text-neutral-500">{optionsHint}</p>
           ) : null}
 
           <p
@@ -276,22 +286,41 @@ export default function ProductCard({
         <button
           type="button"
           onClick={handleAdd}
-          aria-label={`Add ${qty} ${name} to cart`}
+          aria-label={
+            requiresOptions
+              ? `Choose options for ${name}`
+              : `Add ${qty} ${name} to cart`
+          }
+          title={requiresOptions ? "Choose size / color" : "Add to cart"}
           className={`grid shrink-0 place-items-center rounded-full bg-[#4B0A6B] text-white transition-colors hover:bg-purple-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-900 ${
             compact ? "h-9 w-9" : "h-11 w-11"
           } ${cartPop ? "animate-cart-pop" : ""}`}
         >
-          <svg
-            viewBox="0 0 24 24"
-            className={compact ? "h-3.5 w-3.5" : "h-4 w-4"}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            aria-hidden="true"
-          >
-            <path d="M12 5v14M5 12h14" />
-          </svg>
+          {requiresOptions ? (
+            <svg
+              viewBox="0 0 24 24"
+              className={compact ? "h-3.5 w-3.5" : "h-4 w-4"}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              aria-hidden="true"
+            >
+              <path d="M9 6l6 6-6 6" />
+            </svg>
+          ) : (
+            <svg
+              viewBox="0 0 24 24"
+              className={compact ? "h-3.5 w-3.5" : "h-4 w-4"}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              aria-hidden="true"
+            >
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          )}
         </button>
       </div>
     </article>

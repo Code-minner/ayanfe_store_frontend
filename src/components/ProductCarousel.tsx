@@ -1,11 +1,17 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 import ProductCard from "@/components/ProductCard";
 import { useCart } from "@/context/CartContext";
 import { useToast } from "@/context/ToastContext";
 import { useWishlist } from "@/context/WishlistContext";
-import { cartLineFromProduct, type Product } from "@/data/products";
+import {
+  productRequiresOptions,
+  productSizeLabels,
+  type Product,
+} from "@/data/products";
+import { addProductFromCard } from "@/lib/addProductFromCard";
 
 function ArrowButton({
   direction,
@@ -58,6 +64,7 @@ export default function ProductCarousel({
 }: ProductCarouselProps) {
   const scroller = useRef<HTMLDivElement>(null);
   const paused = useRef(false);
+  const router = useRouter();
   const { addItem } = useCart();
   const { has, toggle } = useWishlist();
   const { toast } = useToast();
@@ -135,6 +142,12 @@ export default function ProductCarousel({
               badge={product.badge}
               category={product.category}
               subtitle={product.subtitle}
+              requiresOptions={productRequiresOptions(product)}
+              optionsHint={
+                productSizeLabels(product).length
+                  ? `Sizes: ${productSizeLabels(product).slice(0, 6).join(", ")}`
+                  : undefined
+              }
               originalPrice={product.originalPrice}
               discountPercent={product.discountPercent}
               priority={index < 2}
@@ -145,11 +158,15 @@ export default function ProductCarousel({
               onAdd={(quantity) => {
                 if (onAdd) {
                   onAdd(product, quantity);
-                  toast("Added to cart", "success");
                   return;
                 }
-                addItem(cartLineFromProduct(product), quantity);
-                toast("Added to cart", "success");
+                addProductFromCard({
+                  product,
+                  quantity,
+                  addItem,
+                  toast,
+                  navigate: (href) => router.push(href),
+                });
               }}
             />
           </div>

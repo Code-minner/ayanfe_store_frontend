@@ -1,7 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import type { Product } from "@/data/products";
 import { isColorHex, piecesFromPackLabel } from "@/data/products";
 import { useCart } from "@/context/CartContext";
@@ -16,10 +17,13 @@ function purchaseCap(stock: number, maxPerOrder?: number) {
 
 export default function ProductDetailClient({ product }: { product: Product }) {
   const { addItem } = useCart();
+  const searchParams = useSearchParams();
+  const optionsRef = useRef<HTMLDivElement>(null);
   const gallery = product.images?.length ? product.images : [product.image];
   const variants = product.variants ?? [];
   const hasOptions = variants.length > 0;
   const hasColors = Boolean(product.colors && product.colors.length > 0);
+  const forcePick = searchParams.get("pick") === "1";
 
   const [activeImage, setActiveImage] = useState(gallery[0] ?? product.image);
   const [color, setColor] = useState<string | undefined>(undefined);
@@ -27,6 +31,20 @@ export default function ProductDetailClient({ product }: { product: Product }) {
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
   const [limitMsg, setLimitMsg] = useState("");
+
+  useEffect(() => {
+    if (!forcePick) return;
+    setLimitMsg(
+      hasOptions && hasColors
+        ? "Please select a size and color before adding to cart."
+        : hasOptions
+          ? "Please select a size before adding to cart."
+          : hasColors
+            ? "Please select a color before adding to cart."
+            : ""
+    );
+    optionsRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [forcePick, hasOptions, hasColors]);
 
   const selectedVariant = useMemo(
     () => (variantId ? variants.find((v) => v.id === variantId) : undefined),
@@ -61,7 +79,6 @@ export default function ProductDetailClient({ product }: { product: Product }) {
 
   useEffect(() => {
     setQty((q) => Math.min(Math.max(1, q), Math.max(1, availableStock || 1)));
-    setLimitMsg("");
   }, [variantId, availableStock]);
 
   const needsSize = hasOptions && !selectedVariant;
@@ -203,6 +220,12 @@ export default function ProductDetailClient({ product }: { product: Product }) {
         )}
 
         <dl className="mt-6 grid gap-3 text-sm sm:grid-cols-2">
+          {product.brand ? (
+            <div className="rounded-xl border border-neutral-200 bg-white px-4 py-3">
+              <dt className="text-neutral-500">Brand</dt>
+              <dd className="mt-0.5 font-medium text-neutral-900">{product.brand}</dd>
+            </div>
+          ) : null}
           {product.sku && (
             <div className="rounded-xl border border-neutral-200 bg-white px-4 py-3">
               <dt className="text-neutral-500">SKU</dt>
@@ -229,13 +252,16 @@ export default function ProductDetailClient({ product }: { product: Product }) {
           </div>
         </dl>
 
+        <div ref={optionsRef}>
         {hasOptions && (
-          <div className="mt-6">
+          <div className={`mt-6 ${forcePick && needsSize ? "rounded-2xl ring-2 ring-[#4B0A6B] ring-offset-2 p-3" : ""}`}>
             <p className="text-sm font-medium text-neutral-800">
               {optionLooksLikeSize ? "Size" : "Size / option"}{" "}
               <span className="font-normal text-red-600">*</span>
             </p>
-            <p className="mt-1 text-xs text-neutral-500">Tap a size to select it before adding to cart.</p>
+            <p className="mt-1 text-xs text-neutral-500">
+              Tap a size to select it. Stock shown is how many are left for that size.
+            </p>
             <div className="mt-2 flex flex-wrap gap-2" role="radiogroup" aria-label="Size">
               {variants.map((v) => {
                 const selected = selectedVariant?.id === v.id;
@@ -249,7 +275,10 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                     role="radio"
                     aria-checked={selected}
                     disabled={soldOut}
-                    onClick={() => setVariantId(v.id)}
+                    onClick={() => {
+                      setVariantId(v.id);
+                      setLimitMsg("");
+                    }}
                     className={`min-w-[4.5rem] rounded-xl border px-3.5 py-2.5 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                       selected
                         ? "border-[#4B0A6B] bg-[#4B0A6B] text-white"
@@ -279,7 +308,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
         )}
 
         {hasColors && (
-          <div className="mt-6">
+          <div className={`mt-6 ${forcePick && needsColor ? "rounded-2xl ring-2 ring-[#4B0A6B] ring-offset-2 p-3" : ""}`}>
             <p className="text-sm font-medium text-neutral-800">
               Color <span className="font-normal text-red-600">*</span>
             </p>
@@ -294,7 +323,10 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                     role="radio"
                     aria-checked={selected}
                     aria-label={`Color ${c}`}
-                    onClick={() => setColor(c)}
+                    onClick={() => {
+                      setColor(c);
+                      setLimitMsg("");
+                    }}
                     className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm transition-colors ${
                       selected
                         ? "border-[#4B0A6B] bg-[#F8F1FA] text-[#4B0A6B]"
@@ -312,6 +344,14 @@ export default function ProductDetailClient({ product }: { product: Product }) {
             </div>
           </div>
         )}
+        </div>
+
+        {!hasOptions && !hasColors ? (
+          <p className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            This product has no sizes or colors set in admin yet. Ask the store to add sizes
+            (e.g. 40, 41, 45) with stock for each.
+          </p>
+        ) : null}
 
         <div className="mt-6">
           <div className="flex flex-wrap items-end justify-between gap-2">

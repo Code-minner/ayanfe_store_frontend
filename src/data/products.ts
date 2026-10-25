@@ -38,23 +38,40 @@ function purchaseCap(stock: number, maxPerOrder?: number) {
   return stock;
 }
 
-/** Default option when adding from a card (first in-stock size, or base product). */
+/** True when the shopper must open the product page to pick size and/or color. */
+export function productRequiresOptions(product: Product): boolean {
+  const hasSizes = Boolean(product.variants && product.variants.length > 0);
+  const hasColors = Boolean(product.colors && product.colors.length > 0);
+  return hasSizes || hasColors;
+}
+
+export function productPageHref(product: Product, pick = false): string {
+  const base = product.href || `/product/${product.slug}`;
+  if (!pick) return base;
+  return `${base}${base.includes("?") ? "&" : "?"}pick=1`;
+}
+
+/** Available size labels for cards / product data (in-stock first). */
+export function productSizeLabels(product: Product): string[] {
+  return (product.variants ?? [])
+    .filter((v) => v.stock > 0)
+    .map((v) => v.label);
+}
+
+/** Only for products with no size/color options. */
 export function cartLineFromProduct(product: Product) {
-  const pack =
-    product.variants?.find((v) => v.stock > 0) ?? product.variants?.[0];
-  const stock = pack?.stock ?? product.stock ?? 0;
+  if (productRequiresOptions(product)) {
+    throw new Error("This product needs a size or color. Open the product page to choose.");
+  }
+  const stock = product.stock ?? 0;
   return {
     productId: product.id,
-    variantId: pack?.id,
-    variantLabel: pack?.label,
-    size: pack?.label,
     brand: product.brand,
     name: product.name,
     image: product.image,
-    price: pack?.price ?? product.price,
-    maxStock: purchaseCap(stock, pack?.maxPerOrder),
+    price: product.price,
+    maxStock: purchaseCap(stock),
     href: product.href,
-    color: product.colors?.[0],
   };
 }
 

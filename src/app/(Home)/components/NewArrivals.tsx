@@ -2,12 +2,18 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import ProductCard from "@/components/ProductCard";
 import { useCart } from "@/context/CartContext";
 import { useToast } from "@/context/ToastContext";
 import { useWishlist } from "@/context/WishlistContext";
-import { cartLineFromProduct, type Product } from "@/data/products";
+import {
+  productRequiresOptions,
+  productSizeLabels,
+  type Product,
+} from "@/data/products";
+import { addProductFromCard } from "@/lib/addProductFromCard";
 
 interface NewArrivalsProps {
   products?: Product[];
@@ -71,6 +77,7 @@ export default function NewArrivals({
   viewAllLabel = "Shop all new arrivals",
   viewAllHref = "/shop",
 }: NewArrivalsProps) {
+  const router = useRouter();
   const { addItem } = useCart();
   const { has, toggle } = useWishlist();
   const { toast } = useToast();
@@ -261,6 +268,12 @@ export default function NewArrivals({
                       badge={product.badge}
                       originalPrice={product.originalPrice}
                       discountPercent={product.discountPercent}
+                      requiresOptions={productRequiresOptions(product)}
+                      optionsHint={
+                        productSizeLabels(product).length
+                          ? `Sizes: ${productSizeLabels(product).slice(0, 6).join(", ")}`
+                          : undefined
+                      }
                       isWishlisted={has(product.id) || has(product.slug)}
                       onWishlistToggle={() => {
                         void toggle(product);
@@ -271,11 +284,15 @@ export default function NewArrivals({
                       onAdd={(quantity) => {
                         if (onAdd) {
                           onAdd(product, quantity);
-                          toast("Added to cart", "success");
                           return;
                         }
-                        addItem(cartLineFromProduct(product), quantity);
-                        toast("Added to cart", "success");
+                        addProductFromCard({
+                          product,
+                          quantity,
+                          addItem,
+                          toast,
+                          navigate: (href) => router.push(href),
+                        });
                       }}
                     />
                   </div>

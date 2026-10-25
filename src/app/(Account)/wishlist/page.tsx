@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import SiteHeader from "@/components/SiteHeader";
 import Footer from "@/components/Footer";
 import Breadcrumbs from "@/components/Breadcrumbs";
@@ -11,11 +12,17 @@ import { useWishlist } from "@/context/WishlistContext";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
-import { cartLineFromProduct, type Product } from "@/data/products";
+import {
+  productRequiresOptions,
+  productSizeLabels,
+  type Product,
+} from "@/data/products";
+import { addProductFromCard } from "@/lib/addProductFromCard";
 import { apiFetchProducts } from "@/lib/api";
 import Link from "next/link";
 
 export default function WishlistPage() {
+  const router = useRouter();
   const { items, toggle, loading } = useWishlist();
   const { addItem } = useCart();
   const { isSignedIn, hydrated } = useAuth();
@@ -94,9 +101,20 @@ export default function WishlistPage() {
                       onWishlistToggle={() => {
                         void toggle(product);
                       }}
+                      requiresOptions={productRequiresOptions(product)}
+                      optionsHint={
+                        productSizeLabels(product).length
+                          ? `Sizes: ${productSizeLabels(product).slice(0, 6).join(", ")}`
+                          : undefined
+                      }
                       onAdd={(quantity) => {
-                        addItem(cartLineFromProduct(product), quantity);
-                        toast("Added to cart", "success");
+                        addProductFromCard({
+                          product,
+                          quantity,
+                          addItem,
+                          toast,
+                          navigate: (href) => router.push(href),
+                        });
                       }}
                     />
                   </div>
