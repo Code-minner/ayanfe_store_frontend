@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import type { StoredOrder } from "@/data/orders";
 import { statusBadgeClass, statusLabel } from "@/data/orders";
 import { getShippingMethod, type ShippingMethodId } from "@/data/shipping";
 import { useAuth } from "@/context/AuthContext";
-import { apiOpenMyInvoice } from "@/lib/api";
+import { apiFetchMyInvoice } from "@/lib/api";
 import { formatNaira } from "@/lib/format";
 
 function formatDate(iso: string) {
@@ -31,6 +31,20 @@ function deliveryLabel(order: StoredOrder) {
   }
 }
 
+/** Hide the standalone print toolbar when embedding in the app modal. */
+function embedInvoiceHtml(html: string) {
+  return html
+    .replace(/<div class="toolbar">[\s\S]*?<\/div>/i, "")
+    .replace(
+      "</head>",
+      `<style>
+        html, body { background: #fff !important; }
+        .wrap { padding: 0 !important; }
+        .sheet { box-shadow: none !important; border: 0 !important; margin: 0 auto !important; }
+      </style></head>`
+    );
+}
+
 type Props = {
   order: StoredOrder | null;
   open: boolean;
@@ -39,26 +53,118 @@ type Props = {
 
 export default function OrderModals({ order, open, onClose }: Props) {
   const { token } = useAuth();
-  const [opening, setOpening] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [view, setView] = useState<"details" | "invoice">("details");
+  const [invoiceHtml, setInvoiceHtml] = useState("");
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!open) {
+      setView("details");
+      setInvoiceHtml("");
+      setError("");
+      setLoading(false);
+    }
+  }, [open]);
 
   if (!order || !open) return null;
 
-  const openInvoice = async () => {
+  const loadInvoice = async () => {
     if (!token) {
       setError("Sign in again to view your invoice.");
       return;
     }
-    setOpening(true);
+    setLoading(true);
     setError("");
     try {
-      await apiOpenMyInvoice(token, order.id);
+      const html = await apiFetchMyInvoice(token, order.id);
+      setInvoiceHtml(embedInvoiceHtml(html));
+      setView("invoice");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not open invoice");
     } finally {
-      setOpening(false);
+      setLoading(false);
     }
   };
+
+  const downloadPdf = () => {
+    const frame = iframeRef.current;
+    if (!frame?.contentWindow) return;
+    frame.contentWindow.focus();
+    frame.contentWindow.print();
+  };
+
+  const downloadFile = () => {
+    if (!invoiceHtml) return;
+    const blob = new Blob([invoiceHtml], { type: "text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${order.invoiceNumber || order.id}-invoice.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const closeAll = () => {
+    setView("details");
+    setInvoiceHtml("");
+    onClose();
+  };
+
+  if (view === "invoice" && invoiceHtml) {
+    return (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-6">
+        <button
+          type="button"
+          aria-label="Close"
+          className="absolute inset-0 bg-black/40"
+          onClick={closeAll}
+        />
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="relative flex h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white"
+        >
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-neutral-100 px-4 py-3">
+            <button
+              type="button"
+              onClick={() => setView("details")}
+              className="inline-flex items-center gap-1 text-sm font-medium text-neutral-700 hover:text-[#4B0A6B]"
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Back
+            </button>
+            <h2 className="text-base font-semibold text-neutral-900">Invoice</h2>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={downloadFile}
+                className="rounded-lg border border-neutral-300 px-3 py-2 text-xs font-semibold text-neutral-800 hover:bg-neutral-50 sm:text-sm"
+              >
+                Download
+              </button>
+              <button
+                type="button"
+                onClick={downloadPdf}
+                className="rounded-lg bg-[#4B0A6B] px-3 py-2 text-xs font-semibold text-white hover:bg-[#3a0854] sm:text-sm"
+              >
+                Save PDF
+              </button>
+            </div>
+          </div>
+          <iframe
+            ref={iframeRef}
+            title="Invoice"
+            srcDoc={invoiceHtml}
+            className="min-h-0 w-full flex-1 border-0 bg-white"
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
@@ -66,7 +172,7 @@ export default function OrderModals({ order, open, onClose }: Props) {
         type="button"
         aria-label="Close"
         className="absolute inset-0 bg-black/40"
-        onClick={onClose}
+        onClick={closeAll}
       />
       <div
         role="dialog"
@@ -76,7 +182,7 @@ export default function OrderModals({ order, open, onClose }: Props) {
         <div className="flex items-center justify-between gap-3">
           <button
             type="button"
-            onClick={onClose}
+            onClick={closeAll}
             aria-label="Back"
             className="text-neutral-700 hover:text-[#4B0A6B]"
           >
@@ -87,11 +193,11 @@ export default function OrderModals({ order, open, onClose }: Props) {
           <h2 className="text-lg font-semibold text-neutral-900">Order Details</h2>
           <button
             type="button"
-            disabled={opening}
-            onClick={() => void openInvoice()}
+            disabled={loading}
+            onClick={() => void loadInvoice()}
             className="rounded-lg bg-[#4B0A6B] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50 sm:text-sm"
           >
-            {opening ? "Opening..." : "View Invoice"}
+            {loading ? "Loading..." : "View Invoice"}
           </button>
         </div>
 
@@ -207,11 +313,11 @@ export default function OrderModals({ order, open, onClose }: Props) {
 
         <button
           type="button"
-          disabled={opening}
-          onClick={() => void openInvoice()}
+          disabled={loading}
+          onClick={() => void loadInvoice()}
           className="mt-6 w-full rounded-xl bg-[#4B0A6B] px-4 py-3.5 text-sm font-bold text-white disabled:opacity-50"
         >
-          {opening ? "Opening invoice..." : "View / Download Invoice"}
+          {loading ? "Loading invoice..." : "View Invoice"}
         </button>
       </div>
     </div>

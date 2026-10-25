@@ -507,8 +507,8 @@ export async function apiFetchMyOrders(token: string) {
   return data as { orders: ApiOrder[] };
 }
 
-/** Opens the same invoice HTML document staff use in admin. */
-export async function apiOpenMyInvoice(token: string, orderId: string) {
+/** Same invoice HTML document staff use in admin (for in-app preview). */
+export async function apiFetchMyInvoice(token: string, orderId: string) {
   const res = await fetch(`${API_URL}/orders/${encodeURIComponent(orderId)}/invoice`, {
     headers: authHeaders(token),
     cache: "no-store",
@@ -523,11 +523,7 @@ export async function apiOpenMyInvoice(token: string, orderId: string) {
     }
     throw new Error(message);
   }
-  const win = window.open("", "_blank");
-  if (!win) throw new Error("Pop-up blocked. Allow pop-ups to view the invoice.");
-  win.document.open();
-  win.document.write(html);
-  win.document.close();
+  return html;
 }
 
 export { API_URL };
