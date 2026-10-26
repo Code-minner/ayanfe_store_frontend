@@ -1,17 +1,15 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 import ProductCard from "@/components/ProductCard";
-import { useCart } from "@/context/CartContext";
-import { useToast } from "@/context/ToastContext";
 import { useWishlist } from "@/context/WishlistContext";
+import { useProductQuickAdd } from "@/hooks/useProductQuickAdd";
 import {
+  productIsOutOfStock,
   productRequiresOptions,
   productSizeLabels,
   type Product,
 } from "@/data/products";
-import { addProductFromCard } from "@/lib/addProductFromCard";
 
 function ArrowButton({
   direction,
@@ -64,10 +62,8 @@ export default function ProductCarousel({
 }: ProductCarouselProps) {
   const scroller = useRef<HTMLDivElement>(null);
   const paused = useRef(false);
-  const router = useRouter();
-  const { addItem } = useCart();
   const { has, toggle } = useWishlist();
-  const { toast } = useToast();
+  const { addFromCard, modal } = useProductQuickAdd();
 
   const scrollByPage = (dir: 1 | -1) => {
     const el = scroller.current;
@@ -141,8 +137,11 @@ export default function ProductCarousel({
               href={product.href}
               badge={product.badge}
               category={product.category}
+              brand={product.brand}
+              colors={product.colors}
               subtitle={product.subtitle}
               requiresOptions={productRequiresOptions(product)}
+              outOfStock={productIsOutOfStock(product)}
               optionsHint={
                 productSizeLabels(product).length
                   ? `Sizes: ${productSizeLabels(product).slice(0, 6).join(", ")}`
@@ -160,18 +159,13 @@ export default function ProductCarousel({
                   onAdd(product, quantity);
                   return;
                 }
-                addProductFromCard({
-                  product,
-                  quantity,
-                  addItem,
-                  toast,
-                  navigate: (href) => router.push(href),
-                });
+                addFromCard(product, quantity);
               }}
             />
           </div>
         ))}
       </div>
+      {modal}
     </div>
   );
 }

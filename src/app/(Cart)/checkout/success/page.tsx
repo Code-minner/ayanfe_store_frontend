@@ -34,6 +34,16 @@ type OrderSummary = {
   status: string;
 };
 
+function readStoredSuccess(): OrderSummary | null {
+  try {
+    const raw = sessionStorage.getItem("ayanfe-checkout-success");
+    if (!raw) return null;
+    return JSON.parse(raw) as OrderSummary;
+  } catch {
+    return null;
+  }
+}
+
 function SuccessBody() {
   const params = useSearchParams();
   const { clearCart } = useCart();
@@ -47,29 +57,33 @@ function SuccessBody() {
   const [verifying, setVerifying] = useState(isPaystack && Boolean(reference));
   const [verifyError, setVerifyError] = useState("");
   const [paid, setPaid] = useState(!isPaystack);
-  const [summary, setSummary] = useState<OrderSummary | null>(() => {
-    try {
-      const raw = sessionStorage.getItem("ayanfe-checkout-success");
-      if (raw) {
-        const parsed = JSON.parse(raw) as OrderSummary;
+  const [summary, setSummary] = useState<OrderSummary | null>(null);
+  const [ready, setReady] = useState(false);
+
+  // Load confirmation payload after mount so Strict Mode remounts do not wipe it.
+  useEffect(() => {
+    const stored = readStoredSuccess();
+    if (stored) {
+      setSummary(stored);
+      try {
         sessionStorage.removeItem("ayanfe-checkout-success");
-        return parsed;
+      } catch {
+        /* ignore */
       }
-    } catch {
-      /* ignore */
+    } else if (invoiceParam || emailParam) {
+      setSummary({
+        orderId: invoiceParam || "",
+        invoice: invoiceParam || "",
+        email: emailParam || "",
+        total: 0,
+        subtotal: 0,
+        fee: 0,
+        items: [],
+        status: isBank ? "pending_verification" : "paid",
+      });
     }
-    if (!invoiceParam && !emailParam) return null;
-    return {
-      orderId: invoiceParam || "",
-      invoice: invoiceParam || "",
-      email: emailParam || "",
-      total: 0,
-      subtotal: 0,
-      fee: 0,
-      items: [],
-      status: isBank ? "pending_verification" : "paid",
-    };
-  });
+    setReady(true);
+  }, [invoiceParam, emailParam, isBank]);
 
   useEffect(() => {
     if (!isPaystack || !reference) return;
@@ -106,10 +120,8 @@ function SuccessBody() {
           fee: order.fee ?? pending?.fee ?? 0,
           total: order.total ?? pending?.total ?? 0,
           email: orderEmail,
-          shippingMethod:
-            order.shipping?.method || pending?.shippingMethod,
-          shippingFee:
-            order.shipping?.shippingFee ?? pending?.shippingFee ?? 0,
+          shippingMethod: order.shipping?.method || pending?.shippingMethod,
+          shippingFee: order.shipping?.shippingFee ?? pending?.shippingFee ?? 0,
         });
 
         sessionStorage.removeItem("ayanfe-paystack-pending");
@@ -155,16 +167,18 @@ function SuccessBody() {
   }, [isPaystack, reference]);
 
   useEffect(() => {
-    if (!isBank) return;
+    if (!isBank || !ready) return;
     clearCheckoutDraft();
     clearCart();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isBank]);
+  }, [isBank, ready]);
 
-  if (verifying) {
+  if (!ready || verifying) {
     return (
       <div className="mx-auto max-w-lg rounded-2xl border border-neutral-200 bg-white p-8 text-center shadow-[0_12px_40px_rgba(0,0,0,0.06)]">
-        <p className="text-sm text-neutral-600">Confirming your payment...</p>
+        <p className="text-sm text-neutral-600">
+          {verifying ? "Confirming your payment..." : "Loading your confirmation..."}
+        </p>
       </div>
     );
   }
@@ -207,7 +221,7 @@ function SuccessBody() {
             {(summary.invoice || summary.orderId) && (
               <div className="flex justify-between gap-3">
                 <dt className="text-neutral-500">Order ID</dt>
-                <dd className="font-semibold text-neutral-900">
+                <dd className="font-semibold tracking-wider text-neutral-900">
                   {summary.invoice || summary.orderId}
                 </dd>
               </div>

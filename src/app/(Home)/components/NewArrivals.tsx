@@ -2,18 +2,16 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import ProductCard from "@/components/ProductCard";
-import { useCart } from "@/context/CartContext";
-import { useToast } from "@/context/ToastContext";
 import { useWishlist } from "@/context/WishlistContext";
+import { useProductQuickAdd } from "@/hooks/useProductQuickAdd";
 import {
+  productIsOutOfStock,
   productRequiresOptions,
   productSizeLabels,
   type Product,
 } from "@/data/products";
-import { addProductFromCard } from "@/lib/addProductFromCard";
 
 interface NewArrivalsProps {
   products?: Product[];
@@ -77,10 +75,8 @@ export default function NewArrivals({
   viewAllLabel = "Shop all new arrivals",
   viewAllHref = "/shop",
 }: NewArrivalsProps) {
-  const router = useRouter();
-  const { addItem } = useCart();
   const { has, toggle } = useWishlist();
-  const { toast } = useToast();
+  const { addFromCard, modal } = useProductQuickAdd();
   const scroller = useRef<HTMLDivElement>(null);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const paused = useRef(false);
@@ -266,9 +262,12 @@ export default function NewArrivals({
                       priceMax={product.priceMax}
                       href={product.href}
                       badge={product.badge}
+                      brand={product.brand}
+                      colors={product.colors}
                       originalPrice={product.originalPrice}
                       discountPercent={product.discountPercent}
                       requiresOptions={productRequiresOptions(product)}
+                      outOfStock={productIsOutOfStock(product)}
                       optionsHint={
                         productSizeLabels(product).length
                           ? `Sizes: ${productSizeLabels(product).slice(0, 6).join(", ")}`
@@ -286,13 +285,7 @@ export default function NewArrivals({
                           onAdd(product, quantity);
                           return;
                         }
-                        addProductFromCard({
-                          product,
-                          quantity,
-                          addItem,
-                          toast,
-                          navigate: (href) => router.push(href),
-                        });
+                        addFromCard(product, quantity);
                       }}
                     />
                   </div>
@@ -302,6 +295,7 @@ export default function NewArrivals({
           </div>
         </div>
       </div>
+      {modal}
     </section>
   );
 }

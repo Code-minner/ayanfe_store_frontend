@@ -38,11 +38,22 @@ function purchaseCap(stock: number, maxPerOrder?: number) {
   return stock;
 }
 
-/** True when the shopper must open the product page to pick size and/or color. */
+/**
+ * True when the shopper must pick options before add.
+ * Only products with admin-saved size/option variants. Legacy products
+ * (subtitle text / colors only) buy with base stock, no forced picker.
+ */
 export function productRequiresOptions(product: Product): boolean {
-  const hasSizes = Boolean(product.variants && product.variants.length > 0);
-  const hasColors = Boolean(product.colors && product.colors.length > 0);
-  return hasSizes || hasColors;
+  return Boolean(product.variants && product.variants.length > 0);
+}
+
+/** Product has nothing left to sell (still listed; show Out of stock). */
+export function productIsOutOfStock(product: Product): boolean {
+  const variants = product.variants ?? [];
+  if (variants.length > 0) {
+    return variants.every((v) => v.stock <= 0);
+  }
+  return (product.stock ?? 0) <= 0;
 }
 
 export function productPageHref(product: Product, pick = false): string {
@@ -51,11 +62,12 @@ export function productPageHref(product: Product, pick = false): string {
   return `${base}${base.includes("?") ? "&" : "?"}pick=1`;
 }
 
-/** Available size labels for cards / product data (in-stock first). */
+/** Size labels for cards (prefer in-stock; fall back to all so the list still shows). */
 export function productSizeLabels(product: Product): string[] {
-  return (product.variants ?? [])
-    .filter((v) => v.stock > 0)
-    .map((v) => v.label);
+  const all = product.variants ?? [];
+  const inStock = all.filter((v) => v.stock > 0).map((v) => v.label);
+  if (inStock.length) return inStock;
+  return all.map((v) => v.label);
 }
 
 /** Only for products with no size/color options. */

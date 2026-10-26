@@ -322,7 +322,6 @@ export default function CheckoutPage() {
             <CheckoutSummary
               items={items}
               subtotal={subtotal}
-              fee={fee}
               shippingFee={shippingFee}
               shippingLabel={ship.title}
               total={total}

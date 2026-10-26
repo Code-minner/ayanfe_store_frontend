@@ -16,6 +16,7 @@ import {
 } from "@/data/orders";
 import { useAuth } from "@/context/AuthContext";
 import { apiFetchMyOrders } from "@/lib/api";
+import { OrderEmptyIcon } from "./../../../../public/svg/svg";
 
 const TABS: { id: "all" | OrderStatusUi; label: string }[] = [
   { id: "all", label: "All" },
@@ -61,7 +62,7 @@ export default function OrdersPage() {
         const byId = new Map<string, StoredOrder>();
         for (const o of [...local, ...remote]) byId.set(o.id, o);
         const merged = Array.from(byId.values()).sort(
-          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
         );
         saveOrders(merged);
         setOrders(merged);
@@ -73,7 +74,7 @@ export default function OrdersPage() {
 
   const filtered = useMemo(
     () => (tab === "all" ? orders : orders.filter((o) => o.status === tab)),
-    [orders, tab]
+    [orders, tab],
   );
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / perPage));
@@ -88,7 +89,9 @@ export default function OrdersPage() {
       <SiteHeader />
       <main className="flex-1 bg-[#FAFAFA]">
         <div className="container-page py-8 sm:py-10">
-          <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Orders" }]} />
+          <Breadcrumbs
+            items={[{ label: "Home", href: "/" }, { label: "Orders" }]}
+          />
           <h1 className="mt-4 font-serif text-3xl font-semibold text-[#4B0A6B] sm:text-4xl">
             My Orders
           </h1>
@@ -116,15 +119,12 @@ export default function OrdersPage() {
 
             {filtered.length === 0 ? (
               <div className="flex flex-col items-center px-4 py-16 text-center">
-                <div className="grid h-24 w-24 place-items-center rounded-2xl bg-[#F3E6F6] text-[#4B0A6B]">
-                  <svg viewBox="0 0 64 64" className="h-14 w-14" fill="none" aria-hidden>
-                    <rect x="14" y="10" width="28" height="36" rx="3" stroke="currentColor" strokeWidth="2" />
-                    <rect x="22" y="18" width="28" height="36" rx="3" fill="#F3E6F6" stroke="currentColor" strokeWidth="2" />
-                    <circle cx="44" cy="44" r="10" fill="#4B0A6B" />
-                    <path d="M44 39v6M41 45h6" stroke="white" strokeWidth="2" strokeLinecap="round" />
-                  </svg>
+                <div className="grid h-24 w-24 place-items-center ">
+                  <OrderEmptyIcon className="h-12 w-12" />
                 </div>
-                <h2 className="mt-5 text-lg font-semibold text-neutral-900">No orders yet</h2>
+                <h2 className="mt-5 text-lg font-semibold text-neutral-900">
+                  No orders yet
+                </h2>
                 <p className="mt-2 max-w-sm text-sm text-neutral-500">
                   Orders made for your product will be displayed here
                 </p>
@@ -143,11 +143,16 @@ export default function OrdersPage() {
                     </thead>
                     <tbody>
                       {pageItems.map((order) => (
-                        <tr key={order.id} className="border-t border-neutral-100">
+                        <tr
+                          key={order.id}
+                          className="border-t border-neutral-100"
+                        >
                           <td className="px-2 py-4 font-medium text-neutral-900">
                             #{order.invoiceNumber || order.id.slice(0, 8)}
                           </td>
-                          <td className="px-2 py-4 text-neutral-600">{formatDate(order.date)}</td>
+                          <td className="px-2 py-4 text-neutral-600">
+                            {formatDate(order.date)}
+                          </td>
                           <td className="px-2 py-4">
                             <span
                               className={`rounded-full px-3 py-1 text-xs font-semibold ${statusBadgeClass(order.status)}`}
@@ -162,8 +167,18 @@ export default function OrdersPage() {
                               className="inline-flex items-center gap-1 font-medium text-[#4B0A6B] hover:underline"
                             >
                               View Details
-                              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+                              <svg
+                                viewBox="0 0 24 24"
+                                className="h-4 w-4"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                              >
+                                <path
+                                  d="M9 6l6 6-6 6"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
                               </svg>
                             </button>
                           </td>
@@ -203,7 +218,11 @@ export default function OrdersPage() {
       </main>
       <Footer />
 
-      <OrderModals order={selected} open={Boolean(selected)} onClose={() => setSelected(null)} />
+      <OrderModals
+        order={selected}
+        open={Boolean(selected)}
+        onClose={() => setSelected(null)}
+      />
     </>
   );
 }

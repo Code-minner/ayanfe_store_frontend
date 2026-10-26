@@ -5,6 +5,9 @@ export type StoredOrderItem = {
   image: string;
   price: number;
   quantity: number;
+  color?: string;
+  size?: string;
+  brand?: string;
 };
 
 export type StoredOrder = {

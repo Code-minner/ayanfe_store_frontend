@@ -36,17 +36,32 @@ export default function CartItemRow({
         <div className="min-w-0">
           <h3 className="truncate text-sm sm:text-base">{name}</h3>
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            {item.variantLabel && (
+            {item.brand && (
+              <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] font-medium text-neutral-700">
+                {item.brand}
+              </span>
+            )}
+            {(item.size || item.variantLabel) && (
               <span className="rounded-full bg-[#F8F1FA] px-2 py-0.5 text-[11px] font-medium text-[#4B0A6B]">
-                {item.variantLabel}
+                {(() => {
+                  const label = (item.size || item.variantLabel || "").trim();
+                  const isSize =
+                    /^\d{2,3}$/.test(label) ||
+                    /^age\s*\d+/i.test(label) ||
+                    /^(xxs|xs|s|m|l|xl|xxl|xxxl)$/i.test(label);
+                  return `${isSize ? "Size" : "Option"}: ${label}`;
+                })()}
               </span>
             )}
             {item.color && (
-              <span
-                className="inline-block h-3.5 w-3.5 rounded-[3px] border border-neutral-300"
-                style={{ backgroundColor: item.color }}
-                aria-label="Selected color"
-              />
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-neutral-600">
+                <span
+                  className="inline-block h-3.5 w-3.5 rounded-[3px] border border-neutral-300"
+                  style={{ backgroundColor: item.color }}
+                  aria-hidden
+                />
+                {item.color}
+              </span>
             )}
             <p className="text-sm text-neutral-700">{formatNaira(item.price)} each</p>
           </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   DEFAULT_FILTERS,
   PRICE_PRESETS,
@@ -53,6 +54,8 @@ export default function CategoryFilters({
   colors,
   resultCount,
 }: CategoryFiltersProps) {
+  const [showAllColors, setShowAllColors] = useState(false);
+
   if (!open) return null;
 
   const set = (patch: Partial<ProductFilterState>) => onChange({ ...filters, ...patch });
@@ -63,6 +66,9 @@ export default function CategoryFilters({
       : [...filters.colors, c];
     set({ colors: next });
   };
+
+  const COLOR_PREVIEW = 8;
+  const visibleColors = showAllColors ? colors : colors.slice(0, COLOR_PREVIEW);
 
   return (
     <aside
@@ -250,7 +256,7 @@ export default function CategoryFilters({
               Colour
             </h3>
             <ul className="mt-2 flex flex-wrap gap-1.5">
-              {colors.map((c) => {
+              {visibleColors.map((c) => {
                 const active = filters.colors.includes(c);
                 const bg = colorSwatch(c);
                 const isLight = /white|cream|beige|silver|yellow|gold|nude/i.test(c);
@@ -280,6 +286,15 @@ export default function CategoryFilters({
                 );
               })}
             </ul>
+            {colors.length > COLOR_PREVIEW ? (
+              <button
+                type="button"
+                onClick={() => setShowAllColors((v) => !v)}
+                className="mt-2 text-xs font-medium text-[#6B0080] underline-offset-2 hover:underline"
+              >
+                {showAllColors ? "Show less" : `Show all colours (${colors.length})`}
+              </button>
+            ) : null}
           </section>
         ) : null}
       </div>

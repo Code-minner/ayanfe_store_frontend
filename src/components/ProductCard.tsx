@@ -19,6 +19,8 @@ export interface ProductCardProps {
   category?: string;
   brand?: string;
   subtitle?: string;
+  /** Color swatches shown on the card (hex or name). */
+  colors?: string[];
   originalPrice?: number;
   discountPercent?: number;
 
@@ -38,6 +40,8 @@ export interface ProductCardProps {
   requiresOptions?: boolean;
   /** e.g. "Sizes: 40, 41, 42" shown under the title. */
   optionsHint?: string;
+  /** Still listed, but cannot buy until restocked. */
+  outOfStock?: boolean;
 }
 
 /* ---------- HELPERS ---------- */
@@ -55,7 +59,9 @@ export default function ProductCard({
   imageAlt,
   badge,
   category,
+  brand,
   subtitle,
+  colors,
   originalPrice,
   discountPercent,
   isWishlisted,
@@ -68,6 +74,7 @@ export default function ProductCard({
   compact = false,
   requiresOptions = false,
   optionsHint,
+  outOfStock = false,
 }: ProductCardProps) {
   const [localQty, setLocalQty] = useState(1);
   const [heartPop, setHeartPop] = useState(false);
@@ -109,6 +116,7 @@ export default function ProductCard({
   };
 
   const handleAdd = () => {
+    if (outOfStock && !requiresOptions) return;
     setCartPop(true);
     window.setTimeout(() => setCartPop(false), 280);
     onAdd?.(qty);
@@ -175,7 +183,14 @@ export default function ProductCard({
           />
         )}
 
-        {badge && (
+        {outOfStock ? (
+          <span
+            className="absolute left-3 top-3 rounded bg-neutral-900/85 px-2 py-0.5 text-[11px] uppercase tracking-wide text-white"
+            style={{ fontFamily: "var(--font-anton), Anton, Impact, sans-serif", fontWeight: 400 }}
+          >
+            Out of stock
+          </span>
+        ) : badge ? (
           <span
             className={`absolute left-3 top-3 text-[11px] uppercase tracking-wide ${
               /sale/i.test(badge) ? "text-red-600" : "text-neutral-900"
@@ -184,7 +199,7 @@ export default function ProductCard({
           >
             {badge}
           </span>
-        )}
+        ) : null}
 
         <button
           type="button"
@@ -210,12 +225,22 @@ export default function ProductCard({
 
       <div
         className={`flex items-start justify-between gap-2 ${
-          compact ? "h-[92px] shrink-0 p-3 pt-2.5" : "mt-3 flex-1"
+          compact ? "min-h-[100px] shrink-0 p-3 pt-2.5" : "mt-3 flex-1"
         }`}
       >
         <div className="min-w-0 flex-1">
           {!compact && category ? (
             <p className="text-sm text-neutral-400">{category}</p>
+          ) : null}
+
+          {brand ? (
+            <p
+              className={`font-medium uppercase tracking-wide text-[#4B0A6B] ${
+                compact ? "mt-0.5 text-[10px]" : "mt-1 text-xs"
+              }`}
+            >
+              {brand}
+            </p>
           ) : null}
 
           {href ? (
@@ -225,6 +250,30 @@ export default function ProductCard({
           ) : (
             title
           )}
+
+          {colors && colors.length > 0 ? (
+            <div
+              className={`flex flex-wrap items-center gap-1 ${compact ? "mt-1" : "mt-1.5"}`}
+              aria-label="Available colors"
+            >
+              {colors.slice(0, 6).map((c) => {
+                const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(c.trim());
+                return (
+                  <span
+                    key={c}
+                    title={c}
+                    className={`rounded-full border border-neutral-300 ${
+                      compact ? "h-3 w-3" : "h-3.5 w-3.5"
+                    }`}
+                    style={{ backgroundColor: hex ? c.trim() : "#e5e5e5" }}
+                  />
+                );
+              })}
+              {colors.length > 6 ? (
+                <span className="text-[10px] text-neutral-400">+{colors.length - 6}</span>
+              ) : null}
+            </div>
+          ) : null}
 
           {!compact ? (
             <div className="mt-2 flex items-center gap-2" aria-label={`Quantity for ${name}`}>
@@ -286,41 +335,36 @@ export default function ProductCard({
         <button
           type="button"
           onClick={handleAdd}
+          disabled={outOfStock && !requiresOptions}
           aria-label={
-            requiresOptions
-              ? `Choose options for ${name}`
-              : `Add ${qty} ${name} to cart`
+            outOfStock && !requiresOptions
+              ? `${name} is out of stock`
+              : requiresOptions
+                ? `Pick options and add ${name} to cart`
+                : `Add ${qty} ${name} to cart`
           }
-          title={requiresOptions ? "Choose size / color" : "Add to cart"}
-          className={`grid shrink-0 place-items-center rounded-full bg-[#4B0A6B] text-white transition-colors hover:bg-purple-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-900 ${
+          title={
+            outOfStock && !requiresOptions
+              ? "Out of stock"
+              : requiresOptions
+                ? "Pick size / color"
+                : "Add to cart"
+          }
+          className={`grid shrink-0 place-items-center rounded-full bg-[#4B0A6B] text-white transition-colors hover:bg-purple-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-900 disabled:cursor-not-allowed disabled:bg-neutral-400 ${
             compact ? "h-9 w-9" : "h-11 w-11"
           } ${cartPop ? "animate-cart-pop" : ""}`}
         >
-          {requiresOptions ? (
-            <svg
-              viewBox="0 0 24 24"
-              className={compact ? "h-3.5 w-3.5" : "h-4 w-4"}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              aria-hidden="true"
-            >
-              <path d="M9 6l6 6-6 6" />
-            </svg>
-          ) : (
-            <svg
-              viewBox="0 0 24 24"
-              className={compact ? "h-3.5 w-3.5" : "h-4 w-4"}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              aria-hidden="true"
-            >
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-          )}
+          <svg
+            viewBox="0 0 24 24"
+            className={compact ? "h-3.5 w-3.5" : "h-4 w-4"}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            aria-hidden="true"
+          >
+            <path d="M12 5v14M5 12h14" />
+          </svg>
         </button>
       </div>
     </article>

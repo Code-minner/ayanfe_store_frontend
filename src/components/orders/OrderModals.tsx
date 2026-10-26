@@ -270,7 +270,22 @@ export default function OrderModals({ order, open, onClose }: Props) {
                       <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md border border-neutral-200 bg-white">
                         <Image src={item.image} alt="" fill className="object-contain p-1" sizes="40px" />
                       </span>
-                      <span className="font-medium text-neutral-900">{item.name}</span>
+                      <span className="min-w-0">
+                        <span className="block font-medium text-neutral-900">{item.name}</span>
+                        {[
+                          item.brand ? `Brand: ${item.brand}` : null,
+                          item.size
+                            ? `${/^\d{2,3}$/.test(String(item.size).trim()) || /^age\s*\d+/i.test(String(item.size).trim()) || /^(xxs|xs|s|m|l|xl|xxl|xxxl)$/i.test(String(item.size).trim()) ? "Size" : "Option"}: ${item.size}`
+                            : null,
+                          item.color ? `Color: ${item.color}` : null,
+                        ]
+                          .filter(Boolean)
+                          .map((line) => (
+                            <span key={String(line)} className="mt-0.5 block text-xs text-neutral-500">
+                              {line}
+                            </span>
+                          ))}
+                      </span>
                     </div>
                   </td>
                   <td className="px-3 py-3 text-neutral-700">{item.quantity}</td>

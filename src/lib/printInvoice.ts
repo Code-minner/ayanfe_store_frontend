@@ -46,14 +46,22 @@ export function printOrderInvoice(order: StoredOrder) {
   const shippingFee = order.shippingFee ?? 0;
 
   const rows = order.items
-    .map(
-      (item) => `
+    .map((item) => {
+      const bits = [
+        item.brand ? `Brand: ${item.brand}` : null,
+        item.size ? `Option: ${item.size}` : null,
+        item.color ? `Color: ${item.color}` : null,
+      ].filter(Boolean);
+      const meta = bits.length
+        ? `<div class="meta">${bits.map((b) => escapeHtml(String(b))).join(" · ")}</div>`
+        : "";
+      return `
       <tr>
-        <td>${escapeHtml(item.name)}</td>
+        <td>${escapeHtml(item.name)}${meta}</td>
         <td class="num">${item.quantity}</td>
         <td class="num">${escapeHtml(formatNaira(item.price))}</td>
-      </tr>`
-    )
+      </tr>`;
+    })
     .join("");
 
   const html = `<!doctype html>
@@ -110,6 +118,7 @@ export function printOrderInvoice(order: StoredOrder) {
       padding: 11px 14px;
       font-size: 13px;
     }
+    .meta { margin-top: 4px; font-size: 12px; color: #555; font-weight: 400; }
     table.items td {
       padding: 14px;
       border-bottom: 1px solid #ddd;

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import SiteHeader from "@/components/SiteHeader";
 import Footer from "@/components/Footer";
 import Breadcrumbs from "@/components/Breadcrumbs";
@@ -9,24 +8,21 @@ import ProductCard from "@/components/ProductCard";
 import ProductGrid from "@/components/ProductGrid";
 import ProductSkeleton from "@/components/ProductSkeleton";
 import { useWishlist } from "@/context/WishlistContext";
-import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
-import { useToast } from "@/context/ToastContext";
+import { useProductQuickAdd } from "@/hooks/useProductQuickAdd";
 import {
+  productIsOutOfStock,
   productRequiresOptions,
   productSizeLabels,
   type Product,
 } from "@/data/products";
-import { addProductFromCard } from "@/lib/addProductFromCard";
 import { apiFetchProducts } from "@/lib/api";
 import Link from "next/link";
 
 export default function WishlistPage() {
-  const router = useRouter();
   const { items, toggle, loading } = useWishlist();
-  const { addItem } = useCart();
   const { isSignedIn, hydrated } = useAuth();
-  const { toast } = useToast();
+  const { addFromCard, modal } = useProductQuickAdd();
   const [related, setRelated] = useState<Product[]>([]);
 
   useEffect(() => {
@@ -94,6 +90,8 @@ export default function WishlistPage() {
                       priceMax={product.priceMax}
                       href={product.href}
                       badge={product.badge}
+                      brand={product.brand}
+                      colors={product.colors}
                       originalPrice={product.originalPrice}
                       discountPercent={product.discountPercent}
                       priority={index < 4}
@@ -102,19 +100,14 @@ export default function WishlistPage() {
                         void toggle(product);
                       }}
                       requiresOptions={productRequiresOptions(product)}
+                      outOfStock={productIsOutOfStock(product)}
                       optionsHint={
                         productSizeLabels(product).length
                           ? `Sizes: ${productSizeLabels(product).slice(0, 6).join(", ")}`
                           : undefined
                       }
                       onAdd={(quantity) => {
-                        addProductFromCard({
-                          product,
-                          quantity,
-                          addItem,
-                          toast,
-                          navigate: (href) => router.push(href),
-                        });
+                        addFromCard(product, quantity);
                       }}
                     />
                   </div>
@@ -146,6 +139,7 @@ export default function WishlistPage() {
         </div>
       </main>
       <Footer />
+      {modal}
     </>
   );
 }

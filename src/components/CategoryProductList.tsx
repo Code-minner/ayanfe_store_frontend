@@ -39,7 +39,7 @@ export default function CategoryProductList({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
 
-  const [filterOpen, setFilterOpen] = useState(true);
+  const [filterOpen, setFilterOpen] = useState(false);
   const [filters, setFilters] = useState<ProductFilterState>(DEFAULT_FILTERS);
 
   const filtering = hasActiveFilters(filters);

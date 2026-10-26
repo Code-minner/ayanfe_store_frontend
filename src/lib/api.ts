@@ -88,6 +88,7 @@ export function mapApiProduct(p: ApiProduct, opts?: { thumb?: boolean }) {
   const images = (p.images?.length ? p.images : [p.image]).map((src) =>
     thumb ? optimizeImage(src, 720) : src
   );
+  // Only use variants the admin saved. Do not invent options from subtitle text.
   const variants = parseVariants(p.variants);
   const prices = variants.length ? variants.map((v) => v.price) : [p.price];
   return {
@@ -103,7 +104,7 @@ export function mapApiProduct(p: ApiProduct, opts?: { thumb?: boolean }) {
     discountPercent: p.discountPercent ?? undefined,
     categorySlug: p.categorySlug,
     category: p.category ?? undefined,
-    brand: p.brand || undefined,
+    brand: p.brand?.trim() || undefined,
     colors: p.colors ?? [],
     variants,
     badge: p.badge ?? undefined,

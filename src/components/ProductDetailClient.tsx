@@ -24,6 +24,12 @@ export default function ProductDetailClient({ product }: { product: Product }) {
   const hasOptions = variants.length > 0;
   const hasColors = Boolean(product.colors && product.colors.length > 0);
   const forcePick = searchParams.get("pick") === "1";
+  const optionLooksLikeSize = variants.some((v) => {
+    const t = v.label.trim();
+    return /^\d{2,3}$/.test(t) || /^age\s*\d+/i.test(t) || /^(xxs|xs|s|m|l|xl|xxl|xxxl)$/i.test(t);
+  });
+  const optionTitle = optionLooksLikeSize ? "Size" : "Option";
+  const optionWord = optionTitle.toLowerCase();
 
   const [activeImage, setActiveImage] = useState(gallery[0] ?? product.image);
   const [color, setColor] = useState<string | undefined>(undefined);
@@ -36,15 +42,15 @@ export default function ProductDetailClient({ product }: { product: Product }) {
     if (!forcePick) return;
     setLimitMsg(
       hasOptions && hasColors
-        ? "Please select a size and color before adding to cart."
+        ? `Please select a ${optionWord} and color before adding to cart.`
         : hasOptions
-          ? "Please select a size before adding to cart."
+          ? `Please select a ${optionWord} before adding to cart.`
           : hasColors
             ? "Please select a color before adding to cart."
             : ""
     );
     optionsRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, [forcePick, hasOptions, hasColors]);
+  }, [forcePick, hasOptions, hasColors, optionWord]);
 
   const selectedVariant = useMemo(
     () => (variantId ? variants.find((v) => v.id === variantId) : undefined),
@@ -82,13 +88,14 @@ export default function ProductDetailClient({ product }: { product: Product }) {
   }, [variantId, availableStock]);
 
   const needsSize = hasOptions && !selectedVariant;
-  const needsColor = hasColors && !color;
+  // Color is only required when this product has admin-set options.
+  const needsColor = hasOptions && hasColors && !color;
   const canAdd = availableStock > 0 && !needsSize && !needsColor;
 
   const handleAdd = () => {
     setLimitMsg("");
     if (needsSize) {
-      setLimitMsg("Please select a size first.");
+      setLimitMsg(`Please select a ${optionWord} first.`);
       return;
     }
     if (needsColor) {
@@ -101,7 +108,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
     const safeQty = Math.min(qty, availableStock);
     if (qty > availableStock && selectedVariant?.maxPerOrder) {
       setLimitMsg(
-        `You can only buy ${selectedVariant.maxPerOrder} of size ${selectedVariant.label}. Please pick another size for the rest.`
+        `You can only buy ${selectedVariant.maxPerOrder} of ${optionWord} ${selectedVariant.label}${color ? ` / ${color}` : ""}. Pick another ${optionWord} or color for the rest.`
       );
     }
 
@@ -122,11 +129,14 @@ export default function ProductDetailClient({ product }: { product: Product }) {
       safeQty
     );
     setAdded(true);
+    // Clear choice so they can immediately pick another size/color.
+    setVariantId(undefined);
+    setColor(undefined);
+    setQty(1);
     window.setTimeout(() => setAdded(false), 1800);
   };
 
   const lineTotal = unitPrice * qty;
-  const optionLooksLikeSize = variants.some((v) => /^\d{2}$/.test(v.label.trim()));
 
   return (
     <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-12">
@@ -180,6 +190,11 @@ export default function ProductDetailClient({ product }: { product: Product }) {
         {product.category && (
           <p className="text-sm text-neutral-500">{product.category}</p>
         )}
+        {product.brand ? (
+          <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-[#4B0A6B]">
+            {product.brand}
+          </p>
+        ) : null}
         <h1 className="mt-1 text-2xl font-semibold tracking-tight text-neutral-900 sm:text-3xl">
           {product.name}
         </h1>
@@ -246,7 +261,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                   "Out of stock"
                 )
               ) : (
-                <span className="text-amber-700">Select a size to see stock</span>
+                <span className="text-amber-700">Select an option to see stock</span>
               )}
             </dd>
           </div>
@@ -256,13 +271,12 @@ export default function ProductDetailClient({ product }: { product: Product }) {
         {hasOptions && (
           <div className={`mt-6 ${forcePick && needsSize ? "rounded-2xl ring-2 ring-[#4B0A6B] ring-offset-2 p-3" : ""}`}>
             <p className="text-sm font-medium text-neutral-800">
-              {optionLooksLikeSize ? "Size" : "Size / option"}{" "}
-              <span className="font-normal text-red-600">*</span>
+              {optionTitle} <span className="font-normal text-red-600">*</span>
             </p>
             <p className="mt-1 text-xs text-neutral-500">
-              Tap a size to select it. Stock shown is how many are left for that size.
+              Tap to select. Stock shown is how many are left for that {optionTitle.toLowerCase()}.
             </p>
-            <div className="mt-2 flex flex-wrap gap-2" role="radiogroup" aria-label="Size">
+            <div className="mt-2 flex flex-wrap gap-2" role="radiogroup" aria-label={optionTitle}>
               {variants.map((v) => {
                 const selected = selectedVariant?.id === v.id;
                 const soldOut = v.stock <= 0;
@@ -310,7 +324,12 @@ export default function ProductDetailClient({ product }: { product: Product }) {
         {hasColors && (
           <div className={`mt-6 ${forcePick && needsColor ? "rounded-2xl ring-2 ring-[#4B0A6B] ring-offset-2 p-3" : ""}`}>
             <p className="text-sm font-medium text-neutral-800">
-              Color <span className="font-normal text-red-600">*</span>
+              Color{" "}
+              {hasOptions ? (
+                <span className="font-normal text-red-600">*</span>
+              ) : (
+                <span className="font-normal text-neutral-500">(optional)</span>
+              )}
             </p>
             <div className="mt-2 flex flex-wrap gap-2" role="radiogroup" aria-label="Color">
               {product.colors!.map((c) => {
@@ -346,10 +365,10 @@ export default function ProductDetailClient({ product }: { product: Product }) {
         )}
         </div>
 
-        {!hasOptions && !hasColors ? (
-          <p className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            This product has no sizes or colors set in admin yet. Ask the store to add sizes
-            (e.g. 40, 41, 45) with stock for each.
+        {!hasOptions ? (
+          <p className="mt-6 text-xs text-neutral-500">
+            No size or pack options on this product yet. It uses overall stock
+            {hasColors ? "; color is optional" : ""}.
           </p>
         ) : null}
 
@@ -370,7 +389,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                 onClick={() => {
                   if (n > availableStock && selectedVariant?.maxPerOrder) {
                     setLimitMsg(
-                      `You can only buy ${selectedVariant.maxPerOrder} of size ${selectedVariant.label}. Please pick another size.`
+                      `You can only buy ${selectedVariant.maxPerOrder} of ${optionWord} ${selectedVariant.label}${color ? ` / ${color}` : ""}. Pick another ${optionWord} or color.`
                     );
                     setQty(availableStock);
                     return;
@@ -414,7 +433,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                   Math.floor(next) > selectedVariant.maxPerOrder
                 ) {
                   setLimitMsg(
-                    `You can only buy ${selectedVariant.maxPerOrder} of size ${selectedVariant.label}. Please pick another size.`
+                    `You can only buy ${selectedVariant.maxPerOrder} of ${optionWord} ${selectedVariant.label}${color ? ` / ${color}` : ""}. Pick another ${optionWord} or color.`
                   );
                 } else {
                   setLimitMsg("");
@@ -431,7 +450,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
               onClick={() => {
                 if (qty >= availableStock && selectedVariant?.maxPerOrder) {
                   setLimitMsg(
-                    `You can only buy ${selectedVariant.maxPerOrder} of size ${selectedVariant.label}. Please pick another size.`
+                    `You can only buy ${selectedVariant.maxPerOrder} of ${optionWord} ${selectedVariant.label}${color ? ` / ${color}` : ""}. Pick another ${optionWord} or color.`
                   );
                   return;
                 }
@@ -444,7 +463,8 @@ export default function ProductDetailClient({ product }: { product: Product }) {
           </div>
           {availableStock > 0 && selectedVariant?.maxPerOrder ? (
             <p className="mt-2 text-xs text-neutral-500">
-              Limit {selectedVariant.maxPerOrder} of size {selectedVariant.label} per order
+              Limit {selectedVariant.maxPerOrder} of this {optionWord}
+              {color ? ` / color` : ""} per order. Other sizes or colors can still be added.
               ({rawStock} in stock).
             </p>
           ) : availableStock > 0 ? (
@@ -469,7 +489,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
             {added
               ? "Added to cart"
               : needsSize
-                ? "Select a size"
+                ? `Select a ${optionTitle.toLowerCase()}`
                 : needsColor
                   ? "Select a color"
                   : "Add to cart"}

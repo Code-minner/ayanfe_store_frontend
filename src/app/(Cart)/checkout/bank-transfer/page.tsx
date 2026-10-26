@@ -11,11 +11,7 @@ import { BANK_TRANSFER, type BankTransferDetails } from "@/data/payment";
 import { formatNaira } from "@/lib/format";
 import { fetchPaymentConfig, submitBankTransferOrder } from "@/lib/api";
 import { addLocalOrder, mapApiStatus } from "@/data/orders";
-import {
-  clearCheckoutDraft,
-  draftToShippingPayload,
-  loadCheckoutDraft,
-} from "@/lib/checkoutDraft";
+import { draftToShippingPayload, loadCheckoutDraft } from "@/lib/checkoutDraft";
 import { getShippingMethod } from "@/data/shipping";
 
 function CopyButton({ value, label }: { value: string; label: string }) {
@@ -54,7 +50,7 @@ function CopyButton({ value, label }: { value: string; label: string }) {
 
 export default function BankTransferPage() {
   const router = useRouter();
-  const { items, total, subtotal, fee, shippingMethod, clearCart } = useCart();
+  const { items, total, subtotal, fee, shippingMethod } = useCart();
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -65,8 +61,9 @@ export default function BankTransferPage() {
   const ship = getShippingMethod(shippingMethod);
 
   useEffect(() => {
+    if (submitting) return;
     if (items.length === 0) router.replace("/cart");
-  }, [items.length, router]);
+  }, [items.length, router, submitting]);
 
   useEffect(() => {
     if (!draft.email.trim()) router.replace("/checkout");
@@ -143,8 +140,23 @@ export default function BankTransferPage() {
       });
 
       const invoice = order.invoiceNumber || order.id || order._id || "";
+      const orderId = order.id || order._id || invoice;
+      const successPayload = {
+        orderId,
+        invoice,
+        email: order.email,
+        total: order.total ?? total,
+        subtotal,
+        fee,
+        items: items.map((i) => ({
+          name: i.name,
+          quantity: i.quantity,
+          price: i.price,
+        })),
+        status: order.status || "pending_verification",
+      };
       addLocalOrder({
-        id: order.id || order._id || invoice,
+        id: orderId,
         invoiceNumber: order.invoiceNumber || invoice,
         date: new Date().toISOString(),
         status: mapApiStatus(order.status),
@@ -155,6 +167,9 @@ export default function BankTransferPage() {
           image: i.image,
           price: i.price,
           quantity: i.quantity,
+          color: i.color,
+          size: i.size || i.variantLabel,
+          brand: i.brand,
         })),
         subtotal,
         fee,
@@ -163,27 +178,15 @@ export default function BankTransferPage() {
         shippingMethod,
         shippingFee: ship.fee,
       });
-      clearCheckoutDraft();
-      clearCart();
-      sessionStorage.setItem(
-        "ayanfe-checkout-success",
-        JSON.stringify({
-          orderId: order.id || order._id || invoice,
-          invoice,
-          email: order.email,
-          total: order.total ?? total,
-          subtotal,
-          fee,
-          items: items.map((i) => ({
-            name: i.name,
-            quantity: i.quantity,
-            price: i.price,
-          })),
-          status: order.status || "pending_verification",
-        })
-      );
-      router.push(
-        `/checkout/success?method=bank_transfer&invoice=${encodeURIComponent(invoice)}&email=${encodeURIComponent(order.email)}`
+      // Persist before navigate. Do not clear cart here: empty cart redirects to /cart
+      // and races the success page. Success page clears cart + draft.
+      try {
+        sessionStorage.setItem("ayanfe-checkout-success", JSON.stringify(successPayload));
+      } catch {
+        /* ignore */
+      }
+      router.replace(
+        `/checkout/success?method=bank_transfer&invoice=${encodeURIComponent(invoice)}&email=${encodeURIComponent(order.email || draft.email.trim())}`
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not submit payment proof. Please try again.");

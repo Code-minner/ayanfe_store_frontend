@@ -66,7 +66,6 @@ export default function CartPage() {
 
             <CartSummary
               subtotal={subtotal}
-              fee={fee}
               shippingFee={shippingFee}
               shippingLabel={ship.title}
               total={total}
