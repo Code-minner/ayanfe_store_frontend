@@ -313,7 +313,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
       removeItem,
       clearCart,
       productQuantity: (productId: string) => productQtyInCart(items, productId),
-      choiceQuantity: (opts) => {
+      choiceQuantity: (opts: {
+        productId: string;
+        variantId?: string;
+        color?: string;
+      }) => {
         const id = lineId(opts);
         const hit = items.find((p) => p.id === id);
         return hit?.quantity ?? 0;
