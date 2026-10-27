@@ -4,9 +4,16 @@ import Image from "next/image";
 import Link from "next/link";
 import type { CartItem } from "@/context/CartContext";
 import { formatNaira } from "@/lib/format";
+import {
+  bonusApplies,
+  formatBonusOffer,
+  unitPriceWithBonus,
+} from "@/lib/quantityBonus";
 
 interface CartItemRowProps {
   item: CartItem;
+  /** Total units of this product across all cart lines (sizes/colors). */
+  productQty: number;
   onIncrement: () => void;
   onDecrement: () => void;
   onRemove: () => void;
@@ -14,11 +21,25 @@ interface CartItemRowProps {
 
 export default function CartItemRow({
   item,
+  productQty,
   onIncrement,
   onDecrement,
   onRemove,
 }: CartItemRowProps) {
-  const lineTotal = item.price * item.quantity;
+  const unit = unitPriceWithBonus(
+    item.price,
+    item.bonusQty,
+    item.bonusPercent,
+    productQty
+  );
+  const lineTotal = unit * item.quantity;
+  const unlocked = bonusApplies(item.bonusQty, item.bonusPercent, productQty);
+  const offer = formatBonusOffer(item.bonusQty, item.bonusPercent);
+  const needMore =
+    offer && item.bonusQty && !unlocked
+      ? Math.max(0, item.bonusQty - productQty)
+      : 0;
+
   const name = item.href ? (
     <Link href={item.href} className="font-medium text-neutral-900 hover:text-[#4B0A6B]">
       {item.name}
@@ -63,10 +84,37 @@ export default function CartItemRow({
                 {item.color}
               </span>
             )}
-            <p className="text-sm text-neutral-700">{formatNaira(item.price)} each</p>
+            <p className="text-sm text-neutral-700">
+              {unlocked && unit < item.price ? (
+                <>
+                  <span className="font-medium text-emerald-700">{formatNaira(unit)}</span>
+                  <span className="ml-1 text-neutral-400 line-through">{formatNaira(item.price)}</span>
+                  <span className="ml-1">each</span>
+                </>
+              ) : (
+                <>{formatNaira(item.price)} each</>
+              )}
+            </p>
           </div>
+          {offer ? (
+            <p
+              className={`mt-1 text-xs ${
+                unlocked ? "font-medium text-emerald-700" : "text-neutral-500"
+              }`}
+            >
+              {unlocked
+                ? `${offer} applied`
+                : needMore > 0
+                  ? `${offer}. Add ${needMore} more to unlock.`
+                  : offer}
+            </p>
+          ) : null}
           {item.maxStock !== undefined && (
-            <p className="mt-1 text-xs text-neutral-500">{item.maxStock} available</p>
+            <p className="mt-1 text-xs text-neutral-500">
+              {item.quantity >= item.maxStock
+                ? `Limit ${item.maxStock} for this size/color. Other options can still be added.`
+                : `${item.maxStock} max for this size/color`}
+            </p>
           )}
         </div>
       </div>
@@ -91,6 +139,11 @@ export default function CartItemRow({
             onClick={onIncrement}
             aria-label="Increase quantity"
             disabled={item.maxStock !== undefined && item.quantity >= item.maxStock}
+            title={
+              item.maxStock !== undefined && item.quantity >= item.maxStock
+                ? "Limit reached for this size/color. Add a different size or color instead."
+                : "Increase quantity"
+            }
             className="grid h-8 w-8 place-items-center rounded-full bg-neutral-900 text-white transition-opacity hover:opacity-90 disabled:opacity-40"
           >
             <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden>

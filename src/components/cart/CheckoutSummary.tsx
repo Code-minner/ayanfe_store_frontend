@@ -2,13 +2,16 @@ import Image from "next/image";
 import Link from "next/link";
 import type { CartItem } from "@/context/CartContext";
 import { formatNaira } from "@/lib/format";
+import { productQtyInCart, unitPriceWithBonus } from "@/lib/quantityBonus";
 
 interface CheckoutSummaryProps {
   items: CartItem[];
+  /** List subtotal before quantity bonus. */
   subtotal: number;
   total: number;
   shippingFee?: number;
   shippingLabel?: string;
+  bonusSavings?: number;
   onPay: () => void;
   payLabel?: string;
   payDisabled?: boolean;
@@ -20,6 +23,7 @@ export default function CheckoutSummary({
   total,
   shippingFee = 0,
   shippingLabel = "Shipping",
+  bonusSavings = 0,
   onPay,
   payLabel = "Pay Now",
   payDisabled,
@@ -55,7 +59,27 @@ export default function CheckoutSummary({
                     style={{ backgroundColor: item.color }}
                   />
                 )}
-                <span className="text-xs text-neutral-600">{formatNaira(item.price)}</span>
+                {(() => {
+                  const productQty = productQtyInCart(items, item.productId);
+                  const unit = unitPriceWithBonus(
+                    item.price,
+                    item.bonusQty,
+                    item.bonusPercent,
+                    productQty
+                  );
+                  return unit < item.price ? (
+                    <>
+                      <span className="text-xs font-medium text-emerald-700">
+                        {formatNaira(unit)}
+                      </span>
+                      <span className="text-xs text-neutral-400 line-through">
+                        {formatNaira(item.price)}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-xs text-neutral-600">{formatNaira(item.price)}</span>
+                  );
+                })()}
               </div>
               <p className="mt-1 text-xs text-neutral-500">Qty {item.quantity}</p>
             </div>
@@ -69,6 +93,12 @@ export default function CheckoutSummary({
             <dt className="text-neutral-500">Subtotal</dt>
             <dd className="font-medium text-neutral-900">{formatNaira(subtotal)}</dd>
           </div>
+          {bonusSavings > 0 ? (
+            <div className="flex items-center justify-between gap-4">
+              <dt className="text-emerald-700">Quantity bonus</dt>
+              <dd className="font-medium text-emerald-700">-{formatNaira(bonusSavings)}</dd>
+            </div>
+          ) : null}
           <div className="flex items-center justify-between gap-4">
             <dt className="text-neutral-500">{shippingLabel}</dt>
             <dd className="font-medium text-neutral-900">

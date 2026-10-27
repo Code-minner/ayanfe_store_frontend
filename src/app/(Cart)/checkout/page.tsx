@@ -43,7 +43,8 @@ export default function CheckoutPage() {
   const { user } = useAuth();
   const {
     items,
-    subtotal,
+    listSubtotal,
+    bonusSavings,
     total,
     shippingMethod,
     shippingFee,
@@ -321,7 +322,8 @@ export default function CheckoutPage() {
 
             <CheckoutSummary
               items={items}
-              subtotal={subtotal}
+              subtotal={listSubtotal}
+              bonusSavings={bonusSavings}
               shippingFee={shippingFee}
               shippingLabel={ship.title}
               total={total}

@@ -45,6 +45,8 @@ export type ApiProduct = {
   price: number;
   originalPrice?: number | null;
   discountPercent?: number | null;
+  bonusQty?: number | null;
+  bonusPercent?: number | null;
   categorySlug: string;
   category?: string | null;
   brand?: string | null;
@@ -102,6 +104,8 @@ export function mapApiProduct(p: ApiProduct, opts?: { thumb?: boolean }) {
     priceMax: Math.max(...prices),
     originalPrice: p.originalPrice ?? undefined,
     discountPercent: p.discountPercent ?? undefined,
+    bonusQty: p.bonusQty ?? undefined,
+    bonusPercent: p.bonusPercent ?? undefined,
     categorySlug: p.categorySlug,
     category: p.category ?? undefined,
     brand: p.brand?.trim() || undefined,

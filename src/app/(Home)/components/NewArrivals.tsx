@@ -63,7 +63,7 @@ function ArrowButton({
 }
 
 export default function NewArrivals({
-  products = [],
+  products: productsProp = [],
   onAdd,
   autoPlay = true,
   interval = 4000,
@@ -75,6 +75,7 @@ export default function NewArrivals({
   viewAllLabel = "Shop all new arrivals",
   viewAllHref = "/shop",
 }: NewArrivalsProps) {
+  const products = productsProp.filter((p) => !productIsOutOfStock(p));
   const { has, toggle } = useWishlist();
   const { addFromCard, modal } = useProductQuickAdd();
   const scroller = useRef<HTMLDivElement>(null);
@@ -266,8 +267,9 @@ export default function NewArrivals({
                       colors={product.colors}
                       originalPrice={product.originalPrice}
                       discountPercent={product.discountPercent}
+                      bonusQty={product.bonusQty}
+                      bonusPercent={product.bonusPercent}
                       requiresOptions={productRequiresOptions(product)}
-                      outOfStock={productIsOutOfStock(product)}
                       optionsHint={
                         productSizeLabels(product).length
                           ? `Sizes: ${productSizeLabels(product).slice(0, 6).join(", ")}`

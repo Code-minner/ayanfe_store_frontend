@@ -47,7 +47,7 @@ export function productRequiresOptions(product: Product): boolean {
   return Boolean(product.variants && product.variants.length > 0);
 }
 
-/** Product has nothing left to sell (still listed; show Out of stock). */
+/** Product has nothing left to sell. Storefront hides these; admin still lists them. */
 export function productIsOutOfStock(product: Product): boolean {
   const variants = product.variants ?? [];
   if (variants.length > 0) {
@@ -84,6 +84,8 @@ export function cartLineFromProduct(product: Product) {
     price: product.price,
     maxStock: purchaseCap(stock),
     href: product.href,
+    bonusQty: product.bonusQty,
+    bonusPercent: product.bonusPercent,
   };
 }
 

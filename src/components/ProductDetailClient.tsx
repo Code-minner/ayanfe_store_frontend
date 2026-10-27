@@ -7,6 +7,10 @@ import type { Product } from "@/data/products";
 import { isColorHex, piecesFromPackLabel } from "@/data/products";
 import { useCart } from "@/context/CartContext";
 import { formatNaira } from "@/lib/format";
+import {
+  formatBonusOffer,
+  unitPriceWithBonus,
+} from "@/lib/quantityBonus";
 
 const BULK_QTY_PRESETS = [1, 5, 10, 20, 50, 100];
 
@@ -16,7 +20,7 @@ function purchaseCap(stock: number, maxPerOrder?: number) {
 }
 
 export default function ProductDetailClient({ product }: { product: Product }) {
-  const { addItem } = useCart();
+  const { addItem, productQuantity, choiceQuantity } = useCart();
   const searchParams = useSearchParams();
   const optionsRef = useRef<HTMLDivElement>(null);
   const gallery = product.images?.length ? product.images : [product.image];
@@ -59,12 +63,25 @@ export default function ProductDetailClient({ product }: { product: Product }) {
 
   const unitPrice = hasOptions ? selectedVariant?.price ?? product.price : product.price;
   const rawStock = hasOptions ? selectedVariant?.stock ?? 0 : product.stock ?? 0;
-  const maxAllowed = hasOptions
+  const needsSize = hasOptions && !selectedVariant;
+  // Color is only required when this product has admin-set options.
+  const needsColor = hasOptions && hasColors && !color;
+  const choiceReady = !needsSize && !needsColor;
+  /** Absolute max for this size/color line (stock ∩ maxPerOrder). */
+  const choiceCap = hasOptions
     ? selectedVariant
       ? purchaseCap(selectedVariant.stock, selectedVariant.maxPerOrder)
       : 0
     : purchaseCap(product.stock ?? 0);
-  const availableStock = maxAllowed;
+  const inCartForChoice = choiceReady
+    ? choiceQuantity({
+        productId: product.id,
+        variantId: hasOptions ? selectedVariant?.id : undefined,
+        color,
+      })
+    : 0;
+  /** How many more of THIS size/color can still be added. Other choices stay separate. */
+  const availableStock = Math.max(0, choiceCap - inCartForChoice);
 
   const priceMin = product.priceMin ?? product.price;
   const priceMax = product.priceMax ?? product.price;
@@ -84,13 +101,14 @@ export default function ProductDetailClient({ product }: { product: Product }) {
       : undefined);
 
   useEffect(() => {
-    setQty((q) => Math.min(Math.max(1, q), Math.max(1, availableStock || 1)));
-  }, [variantId, availableStock]);
+    if (availableStock <= 0) {
+      setQty(1);
+      return;
+    }
+    setQty((q) => Math.min(Math.max(1, q), availableStock));
+  }, [variantId, color, availableStock]);
 
-  const needsSize = hasOptions && !selectedVariant;
-  // Color is only required when this product has admin-set options.
-  const needsColor = hasOptions && hasColors && !color;
-  const canAdd = availableStock > 0 && !needsSize && !needsColor;
+  const canAdd = availableStock > 0 && choiceReady;
 
   const handleAdd = () => {
     setLimitMsg("");
@@ -102,17 +120,17 @@ export default function ProductDetailClient({ product }: { product: Product }) {
       setLimitMsg("Please select a color first.");
       return;
     }
-    if (availableStock <= 0) return;
+    if (availableStock <= 0) {
+      const label = selectedVariant?.label || "this option";
+      setLimitMsg(
+        `You already have the max for ${optionWord} ${label}${color ? ` / ${color}` : ""} in your cart. Pick another ${optionWord} or color to add more.`
+      );
+      return;
+    }
 
     const packLabel = selectedVariant?.label;
     const safeQty = Math.min(qty, availableStock);
-    if (qty > availableStock && selectedVariant?.maxPerOrder) {
-      setLimitMsg(
-        `You can only buy ${selectedVariant.maxPerOrder} of ${optionWord} ${selectedVariant.label}${color ? ` / ${color}` : ""}. Pick another ${optionWord} or color for the rest.`
-      );
-    }
-
-    addItem(
+    const result = addItem(
       {
         productId: product.id,
         variantId: hasOptions ? selectedVariant?.id : undefined,
@@ -122,13 +140,30 @@ export default function ProductDetailClient({ product }: { product: Product }) {
         name: product.name,
         image: product.image,
         price: unitPrice,
-        maxStock: availableStock,
+        maxStock: choiceCap,
         color,
         href: product.href ?? `/product/${product.slug}`,
+        bonusQty: product.bonusQty,
+        bonusPercent: product.bonusPercent,
       },
       safeQty
     );
+
+    if (result.addedQty <= 0) {
+      setLimitMsg(
+        `That ${optionWord}${color ? " / color" : ""} is already at its limit in your cart. Pick another ${optionWord} or color.`
+      );
+      return;
+    }
+
     setAdded(true);
+    if (result.atLimit || selectedVariant?.maxPerOrder) {
+      setLimitMsg(
+        `Added ${result.addedQty}. Limit for this ${optionWord}${color ? " / color" : ""} is ${choiceCap}. You can still add a different ${optionWord} or color.`
+      );
+    } else {
+      setLimitMsg("");
+    }
     // Clear choice so they can immediately pick another size/color.
     setVariantId(undefined);
     setColor(undefined);
@@ -136,7 +171,16 @@ export default function ProductDetailClient({ product }: { product: Product }) {
     window.setTimeout(() => setAdded(false), 1800);
   };
 
-  const lineTotal = unitPrice * qty;
+  const bonusOffer = formatBonusOffer(product.bonusQty, product.bonusPercent);
+  // Preview uses this pick qty plus what is already in the cart for the product.
+  const previewProductQty = productQuantity(product.id) + qty;
+  const previewUnit = unitPriceWithBonus(
+    unitPrice,
+    product.bonusQty,
+    product.bonusPercent,
+    previewProductQty
+  );
+  const lineTotal = previewUnit * qty;
 
   return (
     <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-12">
@@ -227,6 +271,10 @@ export default function ProductDetailClient({ product }: { product: Product }) {
             <p className="text-sm font-medium text-green-700">{percent}% off</p>
           )}
         </div>
+
+        {bonusOffer ? (
+          <p className="mt-2 text-sm font-medium text-[#4B0A6B]">{bonusOffer}</p>
+        ) : null}
 
         {product.description && (
           <p className="mt-5 text-sm leading-relaxed text-neutral-600 sm:text-base">
@@ -377,6 +425,11 @@ export default function ProductDetailClient({ product }: { product: Product }) {
             <p className="text-sm font-medium text-neutral-800">Quantity</p>
             <p className="text-sm font-semibold text-neutral-900">
               Line total: {formatNaira(lineTotal)}
+              {previewUnit < unitPrice ? (
+                <span className="ml-2 text-xs font-medium text-emerald-700">
+                  (bonus applied)
+                </span>
+              ) : null}
             </p>
           </div>
 
@@ -446,11 +499,11 @@ export default function ProductDetailClient({ product }: { product: Product }) {
             <button
               type="button"
               aria-label="Increase quantity"
-              disabled={needsSize || qty >= availableStock}
+              disabled={needsSize || availableStock <= 0 || qty >= availableStock}
               onClick={() => {
-                if (qty >= availableStock && selectedVariant?.maxPerOrder) {
+                if (availableStock <= 0) {
                   setLimitMsg(
-                    `You can only buy ${selectedVariant.maxPerOrder} of ${optionWord} ${selectedVariant.label}${color ? ` / ${color}` : ""}. Pick another ${optionWord} or color.`
+                    `This ${optionWord}${color ? " / color" : ""} is at its limit in your cart. Pick another ${optionWord} or color.`
                   );
                   return;
                 }
@@ -461,15 +514,26 @@ export default function ProductDetailClient({ product }: { product: Product }) {
               +
             </button>
           </div>
-          {availableStock > 0 && selectedVariant?.maxPerOrder ? (
+          {choiceReady && selectedVariant?.maxPerOrder ? (
             <p className="mt-2 text-xs text-neutral-500">
               Limit {selectedVariant.maxPerOrder} of this {optionWord}
-              {color ? ` / color` : ""} per order. Other sizes or colors can still be added.
-              ({rawStock} in stock).
+              {color ? ` / color` : ""} per order
+              {inCartForChoice > 0 ? ` · ${inCartForChoice} already in cart` : ""}
+              {availableStock > 0
+                ? ` · ${availableStock} left to add`
+                : " · limit reached for this choice"}
+              . Other sizes or colors can still be added. ({rawStock} in stock).
             </p>
-          ) : availableStock > 0 ? (
+          ) : choiceReady && availableStock > 0 ? (
             <p className="mt-2 text-xs text-neutral-500">
-              Max {availableStock} available for this option.
+              Max {availableStock} more available for this option
+              {inCartForChoice > 0 ? ` (${inCartForChoice} already in cart)` : ""}.
+            </p>
+          ) : choiceReady && availableStock <= 0 ? (
+            <p className="mt-2 text-xs text-amber-700">
+              This {optionWord}
+              {color ? " / color" : ""} is at its limit in your cart. Pick another{" "}
+              {optionWord} or color to add more.
             </p>
           ) : null}
           {limitMsg ? (
@@ -492,7 +556,9 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                 ? `Select a ${optionTitle.toLowerCase()}`
                 : needsColor
                   ? "Select a color"
-                  : "Add to cart"}
+                  : availableStock <= 0
+                    ? `Pick another ${optionWord}`
+                    : "Add to cart"}
           </button>
           <a
             href="/cart"

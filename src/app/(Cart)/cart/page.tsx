@@ -14,7 +14,8 @@ export default function CartPage() {
   const {
     items,
     itemCount,
-    subtotal,
+    listSubtotal,
+    bonusSavings,
     total,
     shippingMethod,
     shippingFee,
@@ -22,6 +23,7 @@ export default function CartPage() {
     increment,
     decrement,
     removeItem,
+    productQuantity,
   } = useCart();
 
   const ship = getShippingMethod(shippingMethod);
@@ -55,6 +57,7 @@ export default function CartPage() {
                     <CartItemRow
                       key={item.id}
                       item={item}
+                      productQty={productQuantity(item.productId)}
                       onIncrement={() => increment(item.id)}
                       onDecrement={() => decrement(item.id)}
                       onRemove={() => removeItem(item.id)}
@@ -65,7 +68,8 @@ export default function CartPage() {
             </section>
 
             <CartSummary
-              subtotal={subtotal}
+              subtotal={listSubtotal}
+              bonusSavings={bonusSavings}
               shippingFee={shippingFee}
               shippingLabel={ship.title}
               total={total}

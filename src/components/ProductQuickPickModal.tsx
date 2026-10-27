@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { useCart } from "@/context/CartContext";
 import type { Product } from "@/data/products";
 import { isColorHex } from "@/data/products";
 import { formatNaira } from "@/lib/format";
@@ -43,6 +44,7 @@ export default function ProductQuickPickModal({
   });
   const optionTitle = optionLooksLikeSize ? "Size" : "Option";
 
+  const { choiceQuantity } = useCart();
   const [variantId, setVariantId] = useState<string | undefined>();
   const [color, setColor] = useState<string | undefined>();
   const [qty, setQty] = useState(initialQty);
@@ -78,21 +80,34 @@ export default function ProductQuickPickModal({
   );
 
   const unitPrice = hasSizes ? selected?.price ?? product.price : product.price;
-  const maxAllowed = hasSizes
+  const needsSize = hasSizes && !selected;
+  const needsColor = hasSizes && hasColors && !color;
+  const choiceReady = !needsSize && !needsColor;
+  const choiceCap = hasSizes
     ? selected
       ? purchaseCap(selected.stock, selected.maxPerOrder)
       : 0
     : purchaseCap(product.stock ?? 0);
+  const inCartForChoice = choiceReady
+    ? choiceQuantity({
+        productId: product.id,
+        variantId: hasSizes ? selected?.id : undefined,
+        color,
+      })
+    : 0;
+  const remaining = Math.max(0, choiceCap - inCartForChoice);
 
   useEffect(() => {
-    setQty((q) => Math.min(Math.max(1, q), Math.max(1, maxAllowed || 1)));
-  }, [variantId, maxAllowed]);
+    if (remaining <= 0) {
+      setQty(1);
+      return;
+    }
+    setQty((q) => Math.min(Math.max(1, q), remaining));
+  }, [variantId, color, remaining]);
 
   if (!open) return null;
 
-  const needsSize = hasSizes && !selected;
-  const needsColor = hasSizes && hasColors && !color;
-  const canAdd = maxAllowed > 0 && !needsSize && !needsColor;
+  const canAdd = remaining > 0 && choiceReady;
 
   const handleAdd = () => {
     setError("");
@@ -105,15 +120,20 @@ export default function ProductQuickPickModal({
       setError("Please select a color.");
       return;
     }
-    if (maxAllowed <= 0) return;
-    const safeQty = Math.min(qty, maxAllowed);
+    if (remaining <= 0) {
+      setError(
+        `You already have the max for this ${optionTitle.toLowerCase()}${color ? " / color" : ""} in your cart. Pick another ${optionTitle.toLowerCase()} or color.`
+      );
+      return;
+    }
+    const safeQty = Math.min(qty, remaining);
     const labelBits = [selected?.label, color].filter(Boolean).join(" · ");
     onConfirm({
       variantId: hasSizes ? selected?.id : undefined,
       variantLabel: selected?.label,
       color,
       price: unitPrice,
-      maxStock: maxAllowed,
+      maxStock: choiceCap,
       quantity: safeQty,
     });
     setJustAdded(
@@ -264,10 +284,13 @@ export default function ProductQuickPickModal({
 
           <div>
             <p className="text-sm font-medium text-neutral-800">Quantity</p>
-            {selected?.maxPerOrder && selected.maxPerOrder > 0 ? (
+            {choiceReady && selected?.maxPerOrder && selected.maxPerOrder > 0 ? (
               <p className="mt-1 text-xs text-neutral-500">
                 Max {selected.maxPerOrder} of this {optionTitle.toLowerCase()}
-                {color ? ` / color` : ""} per order. Other sizes or colors can still be added.
+                {color ? ` / color` : ""} per order
+                {inCartForChoice > 0 ? ` · ${inCartForChoice} already in cart` : ""}
+                {remaining > 0 ? ` · ${remaining} left to add` : " · limit reached"}. Other sizes
+                or colors can still be added.
               </p>
             ) : (
               <p className="mt-1 text-xs text-neutral-500">
@@ -278,7 +301,7 @@ export default function ProductQuickPickModal({
               <button
                 type="button"
                 aria-label="Decrease quantity"
-                disabled={qty <= 1 || needsSize}
+                disabled={qty <= 1 || needsSize || remaining <= 0}
                 onClick={() => setQty((q) => Math.max(1, q - 1))}
                 className="grid h-8 w-8 place-items-center rounded-full text-neutral-800 hover:bg-neutral-50 disabled:opacity-40"
               >
@@ -288,8 +311,8 @@ export default function ProductQuickPickModal({
               <button
                 type="button"
                 aria-label="Increase quantity"
-                disabled={needsSize || qty >= maxAllowed}
-                onClick={() => setQty((q) => Math.min(maxAllowed, q + 1))}
+                disabled={needsSize || remaining <= 0 || qty >= remaining}
+                onClick={() => setQty((q) => Math.min(remaining, q + 1))}
                 className="grid h-8 w-8 place-items-center rounded-full text-neutral-800 hover:bg-neutral-50 disabled:opacity-40"
               >
                 +
@@ -320,9 +343,11 @@ export default function ProductQuickPickModal({
               ? `Select a ${optionTitle.toLowerCase()}`
               : needsColor
                 ? "Select a color"
-                : justAdded
-                  ? `Add another · ${formatNaira(unitPrice * qty)}`
-                  : `Add to cart · ${formatNaira(unitPrice * qty)}`}
+                : remaining <= 0
+                  ? "Pick another size or color"
+                  : justAdded
+                    ? `Add another · ${formatNaira(unitPrice * qty)}`
+                    : `Add to cart · ${formatNaira(unitPrice * qty)}`}
           </button>
           {justAdded ? (
             <button

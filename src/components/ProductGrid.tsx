@@ -29,8 +29,10 @@ export default function ProductGrid({
 }: ProductGridProps) {
   const { has, toggle } = useWishlist();
   const { addFromCard, modal } = useProductQuickAdd();
+  // Storefront never lists out-of-stock products (admin still sees them).
+  const visible = products.filter((p) => !productIsOutOfStock(p));
 
-  if (products.length === 0) {
+  if (visible.length === 0) {
     return (
       <p className="py-16 text-center text-sm text-neutral-500">{emptyMessage}</p>
     );
@@ -43,10 +45,9 @@ export default function ProductGrid({
           besideFilters ? "lg:grid-cols-3" : "lg:grid-cols-4"
         }`}
       >
-        {products.map((product, index) => {
+        {visible.map((product, index) => {
           const sizes = productSizeLabels(product);
           const requiresOptions = productRequiresOptions(product);
-          const outOfStock = productIsOutOfStock(product);
           const optionsHint = sizes.length
             ? `Sizes: ${sizes.slice(0, 8).join(", ")}${sizes.length > 8 ? "…" : ""}`
             : undefined;
@@ -70,9 +71,10 @@ export default function ProductGrid({
                 subtitle={product.subtitle}
                 optionsHint={optionsHint}
                 requiresOptions={requiresOptions}
-                outOfStock={outOfStock}
                 originalPrice={product.originalPrice}
                 discountPercent={product.discountPercent}
+                bonusQty={product.bonusQty}
+                bonusPercent={product.bonusPercent}
                 priority={index < 4}
                 isWishlisted={has(product.id) || has(product.slug)}
                 onWishlistToggle={() => {

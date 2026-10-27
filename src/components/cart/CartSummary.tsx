@@ -7,6 +7,8 @@ interface CartSummaryProps {
   total: number;
   shippingFee?: number;
   shippingLabel?: string;
+  /** Savings from quantity bonuses (optional). */
+  bonusSavings?: number;
   children?: ReactNode;
   primaryLabel: string;
   primaryHref?: string;
@@ -21,6 +23,7 @@ export default function CartSummary({
   total,
   shippingFee = 0,
   shippingLabel,
+  bonusSavings = 0,
   children,
   primaryLabel,
   primaryHref,
@@ -57,6 +60,12 @@ export default function CartSummary({
           <dt className="text-neutral-500">Subtotal</dt>
           <dd className="font-medium text-neutral-900">{formatNaira(subtotal)}</dd>
         </div>
+        {bonusSavings > 0 ? (
+          <div className="flex items-center justify-between gap-4">
+            <dt className="text-emerald-700">Quantity bonus</dt>
+            <dd className="font-medium text-emerald-700">-{formatNaira(bonusSavings)}</dd>
+          </div>
+        ) : null}
         <div className="flex items-center justify-between gap-4">
           <dt className="text-neutral-500">{shippingLabel || "Shipping"}</dt>
           <dd className="font-medium text-neutral-900">

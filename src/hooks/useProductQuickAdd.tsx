@@ -42,7 +42,7 @@ export function useProductQuickAdd() {
       open
       onClose={closePick}
       onConfirm={({ variantId, variantLabel, color, price, maxStock, quantity }) => {
-        addItem(
+        const result = addItem(
           {
             productId: pick.product.id,
             variantId,
@@ -55,10 +55,24 @@ export function useProductQuickAdd() {
             maxStock,
             color,
             href: pick.product.href ?? `/product/${pick.product.slug}`,
+            bonusQty: pick.product.bonusQty,
+            bonusPercent: pick.product.bonusPercent,
           },
           quantity
         );
-        toast("Added. You can pick another size or color.", "success");
+        if (result.addedQty <= 0) {
+          toast(
+            "That size/color is already at its limit. Pick another size or color.",
+            "error"
+          );
+          return;
+        }
+        toast(
+          result.atLimit
+            ? "Added. Limit reached for that size/color. You can still pick another."
+            : "Added. You can pick another size or color.",
+          "success"
+        );
         // Keep popup open so they can add a different size/color (limits are per choice).
       }}
     />

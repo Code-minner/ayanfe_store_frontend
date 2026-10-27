@@ -54,12 +54,13 @@ interface ProductCarouselProps {
 }
 
 export default function ProductCarousel({
-  products,
+  products: productsProp,
   onAdd,
   titleId,
   autoPlay = true,
   interval = 2800,
 }: ProductCarouselProps) {
+  const products = productsProp.filter((p) => !productIsOutOfStock(p));
   const scroller = useRef<HTMLDivElement>(null);
   const paused = useRef(false);
   const { has, toggle } = useWishlist();
@@ -141,7 +142,6 @@ export default function ProductCarousel({
               colors={product.colors}
               subtitle={product.subtitle}
               requiresOptions={productRequiresOptions(product)}
-              outOfStock={productIsOutOfStock(product)}
               optionsHint={
                 productSizeLabels(product).length
                   ? `Sizes: ${productSizeLabels(product).slice(0, 6).join(", ")}`
@@ -149,6 +149,8 @@ export default function ProductCarousel({
               }
               originalPrice={product.originalPrice}
               discountPercent={product.discountPercent}
+              bonusQty={product.bonusQty}
+              bonusPercent={product.bonusPercent}
               priority={index < 2}
               isWishlisted={has(product.id) || has(product.slug)}
               onWishlistToggle={() => {

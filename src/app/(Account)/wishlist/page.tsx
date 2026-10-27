@@ -20,7 +20,8 @@ import { apiFetchProducts } from "@/lib/api";
 import Link from "next/link";
 
 export default function WishlistPage() {
-  const { items, toggle, loading } = useWishlist();
+  const { items: wishlistItems, toggle, loading } = useWishlist();
+  const items = wishlistItems.filter((p) => !productIsOutOfStock(p));
   const { isSignedIn, hydrated } = useAuth();
   const { addFromCard, modal } = useProductQuickAdd();
   const [related, setRelated] = useState<Product[]>([]);
@@ -94,13 +95,14 @@ export default function WishlistPage() {
                       colors={product.colors}
                       originalPrice={product.originalPrice}
                       discountPercent={product.discountPercent}
+                      bonusQty={product.bonusQty}
+                      bonusPercent={product.bonusPercent}
                       priority={index < 4}
                       isWishlisted
                       onWishlistToggle={() => {
                         void toggle(product);
                       }}
                       requiresOptions={productRequiresOptions(product)}
-                      outOfStock={productIsOutOfStock(product)}
                       optionsHint={
                         productSizeLabels(product).length
                           ? `Sizes: ${productSizeLabels(product).slice(0, 6).join(", ")}`

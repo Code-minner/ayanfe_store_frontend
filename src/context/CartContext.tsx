@@ -12,6 +12,12 @@ import {
   shippingFeeFor,
   type ShippingMethodId,
 } from "@/data/shipping";
+import {
+  cartSubtotalWithBonus,
+  productQtyInCart,
+  roundMoney,
+  unitPriceWithBonus,
+} from "@/lib/quantityBonus";
 
 export interface CartItem {
   id: string;
@@ -20,6 +26,7 @@ export interface CartItem {
   variantLabel?: string;
   name: string;
   image: string;
+  /** List / catalog unit price (before quantity bonus). */
   price: number;
   quantity: number;
   /** Max packs / units available for this line when added */
@@ -29,12 +36,19 @@ export interface CartItem {
   size?: string;
   brand?: string;
   href?: string;
+  /** Buy this many of the product (all lines) to unlock bonusPercent. */
+  bonusQty?: number;
+  bonusPercent?: number;
 }
 
 interface CartContextValue {
   items: CartItem[];
   itemCount: number;
+  /** Subtotal after quantity bonuses. */
   subtotal: number;
+  /** Subtotal if no quantity bonuses applied. */
+  listSubtotal: number;
+  bonusSavings: number;
   fee: number;
   shippingMethod: ShippingMethodId;
   shippingFee: number;
@@ -43,12 +57,22 @@ interface CartContextValue {
   addItem: (
     item: Omit<CartItem, "quantity" | "id"> & { id?: string },
     quantity?: number
-  ) => void;
+  ) => { addedQty: number; lineQty: number; atLimit: boolean };
   setQuantity: (id: string, quantity: number) => void;
   increment: (id: string) => void;
   decrement: (id: string) => void;
   removeItem: (id: string) => void;
   clearCart: () => void;
+  /** Total units of a product across sizes/colors. */
+  productQuantity: (productId: string) => number;
+  /** Units already in cart for one size/color choice. */
+  choiceQuantity: (opts: {
+    productId: string;
+    variantId?: string;
+    color?: string;
+  }) => number;
+  /** Effective unit price for a line after bonus. */
+  effectiveUnitPrice: (item: CartItem) => number;
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -92,6 +116,17 @@ function normalizeStoredItem(raw: Partial<CartItem> & { id?: string }): CartItem
         ? raw.variantLabel
         : undefined;
   const brand = typeof raw.brand === "string" ? raw.brand : undefined;
+  const bonusQty =
+    typeof raw.bonusQty === "number" && Number.isFinite(raw.bonusQty) && raw.bonusQty >= 1
+      ? Math.floor(raw.bonusQty)
+      : undefined;
+  const bonusPercent =
+    typeof raw.bonusPercent === "number" &&
+    Number.isFinite(raw.bonusPercent) &&
+    raw.bonusPercent > 0 &&
+    raw.bonusPercent <= 100
+      ? raw.bonusPercent
+      : undefined;
 
   return {
     id: raw.id || lineId({ productId, variantId, color }),
@@ -107,6 +142,8 @@ function normalizeStoredItem(raw: Partial<CartItem> & { id?: string }): CartItem
     size,
     brand,
     href: typeof raw.href === "string" ? raw.href : undefined,
+    bonusQty,
+    bonusPercent,
   };
 }
 
@@ -156,10 +193,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const addItem = (
     item: Omit<CartItem, "quantity" | "id"> & { id?: string },
     quantity = 1
-  ) => {
+  ): { addedQty: number; lineQty: number; atLimit: boolean } => {
     const id = item.id || lineId(item);
     const cap = item.maxStock;
     const addQty = Math.max(1, Math.floor(quantity));
+    let result = { addedQty: 0, lineQty: 0, atLimit: false };
 
     setItems((prev) => {
       const existing = prev.find((p) => p.id === id);
@@ -167,6 +205,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
         const nextQty = existing.quantity + addQty;
         const limited =
           cap !== undefined ? Math.min(nextQty, Math.max(0, cap)) : nextQty;
+        const addedQty = Math.max(0, limited - existing.quantity);
+        result = {
+          addedQty,
+          lineQty: limited,
+          atLimit: cap !== undefined ? limited >= cap : false,
+        };
         if (limited <= 0) return prev.filter((p) => p.id !== id);
         return prev.map((p) =>
           p.id === id
@@ -179,11 +223,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
                 size: item.size ?? item.variantLabel ?? p.size,
                 brand: item.brand ?? p.brand,
                 color: item.color ?? p.color,
+                bonusQty: item.bonusQty ?? p.bonusQty,
+                bonusPercent: item.bonusPercent ?? p.bonusPercent,
               }
             : p
         );
       }
       const startQty = cap !== undefined ? Math.min(addQty, Math.max(0, cap)) : addQty;
+      result = {
+        addedQty: startQty,
+        lineQty: startQty,
+        atLimit: cap !== undefined ? startQty >= cap : false,
+      };
       if (startQty <= 0) return prev;
       return [
         ...prev,
@@ -194,6 +245,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         },
       ];
     });
+
+    return result;
   };
 
   const setQuantity = (id: string, quantity: number) => {
@@ -236,16 +289,22 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const clearCart = () => setItems([]);
 
   const value = useMemo(() => {
-    const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+    const listSubtotal = roundMoney(
+      items.reduce((sum, i) => sum + i.price * i.quantity, 0)
+    );
+    const subtotal = cartSubtotalWithBonus(items);
+    const bonusSavings = roundMoney(Math.max(0, listSubtotal - subtotal));
     const shippingFee = items.length > 0 ? shippingFeeFor(shippingMethod) : 0;
     return {
       items,
       itemCount: items.reduce((sum, i) => sum + i.quantity, 0),
       subtotal,
+      listSubtotal,
+      bonusSavings,
       fee: 0,
       shippingMethod,
       shippingFee,
-      total: subtotal + shippingFee,
+      total: roundMoney(subtotal + shippingFee),
       setShippingMethod,
       addItem,
       setQuantity,
@@ -253,6 +312,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
       decrement,
       removeItem,
       clearCart,
+      productQuantity: (productId: string) => productQtyInCart(items, productId),
+      choiceQuantity: (opts) => {
+        const id = lineId(opts);
+        const hit = items.find((p) => p.id === id);
+        return hit?.quantity ?? 0;
+      },
+      effectiveUnitPrice: (item: CartItem) =>
+        unitPriceWithBonus(
+          item.price,
+          item.bonusQty,
+          item.bonusPercent,
+          productQtyInCart(items, item.productId)
+        ),
     };
   }, [items, shippingMethod]);
 

@@ -23,6 +23,9 @@ export interface ProductCardProps {
   colors?: string[];
   originalPrice?: number;
   discountPercent?: number;
+  /** Buy this many units to unlock bonusPercent off. */
+  bonusQty?: number;
+  bonusPercent?: number;
 
   isWishlisted?: boolean;
   onWishlistToggle?: (wishlisted: boolean) => void;
@@ -64,6 +67,8 @@ export default function ProductCard({
   colors,
   originalPrice,
   discountPercent,
+  bonusQty,
+  bonusPercent,
   isWishlisted,
   onWishlistToggle,
   onAdd,
@@ -102,6 +107,13 @@ export default function ProductCard({
   const percent =
     discountPercent ??
     (hasDiscount ? Math.round((1 - price / originalPrice) * 100) : undefined);
+  const bonusOffer =
+    typeof bonusQty === "number" &&
+    bonusQty >= 1 &&
+    typeof bonusPercent === "number" &&
+    bonusPercent > 0
+      ? `Buy ${bonusQty}+, get ${bonusPercent}% off`
+      : null;
 
   const setQty = (next: number) => {
     const value = Math.max(1, next);
@@ -330,6 +342,15 @@ export default function ProductCard({
               <span className="text-xs font-normal text-green-700 sm:text-sm">{percent}% off</span>
             )}
           </p>
+          {bonusOffer ? (
+            <p
+              className={`mt-1 font-medium text-[#4B0A6B] ${
+                compact ? "text-[11px]" : "text-xs"
+              }`}
+            >
+              {bonusOffer}
+            </p>
+          ) : null}
         </div>
 
         <button
