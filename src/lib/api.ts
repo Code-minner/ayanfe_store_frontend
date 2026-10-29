@@ -34,6 +34,7 @@ export type ApiProductVariant = {
   price: number;
   stock: number;
   maxPerOrder?: number;
+  colors?: string[];
 };
 
 export type ApiProduct = {
@@ -73,15 +74,27 @@ function parseVariants(raw: ApiProduct["variants"]): ApiProductVariant[] {
         typeof v.price === "number" &&
         typeof v.stock === "number"
     )
-    .map((v) => ({
-      id: v.id,
-      label: v.label,
-      price: v.price,
-      stock: v.stock,
-      ...(typeof v.maxPerOrder === "number" && v.maxPerOrder > 0
-        ? { maxPerOrder: Math.floor(v.maxPerOrder) }
-        : {}),
-    }));
+    .map((v) => {
+      const colors = Array.isArray(v.colors)
+        ? [
+            ...new Set(
+              v.colors
+                .map((c) => String(c || "").trim())
+                .filter(Boolean)
+            ),
+          ]
+        : [];
+      return {
+        id: v.id,
+        label: v.label,
+        price: v.price,
+        stock: v.stock,
+        ...(typeof v.maxPerOrder === "number" && v.maxPerOrder > 0
+          ? { maxPerOrder: Math.floor(v.maxPerOrder) }
+          : {}),
+        ...(colors.length ? { colors } : {}),
+      };
+    });
 }
 
 export function mapApiProduct(p: ApiProduct, opts?: { thumb?: boolean }) {

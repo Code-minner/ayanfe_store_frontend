@@ -7,6 +7,8 @@ export type ProductVariant = {
   stock: number;
   /** Max units one customer may buy of this size/option per order. */
   maxPerOrder?: number;
+  /** Colors for this size only. Empty/missing falls back to product.colors. */
+  colors?: string[];
 };
 
 export type Product = ProductCardProps & {
@@ -23,6 +25,38 @@ export type Product = ProductCardProps & {
   stock?: number;
   sku?: string;
 };
+
+/**
+ * Colors the shopper should pick for the current size (or product-level when
+ * there are no sizes / legacy products).
+ */
+export function colorsForSelection(
+  product: Product,
+  selectedVariant?: ProductVariant | null
+): string[] {
+  const productColors = Array.isArray(product.colors)
+    ? product.colors.map((c) => String(c).trim()).filter(Boolean)
+    : [];
+  const variants = product.variants ?? [];
+  const anySizeHasColors = variants.some(
+    (v) => Array.isArray(v.colors) && v.colors.length > 0
+  );
+
+  if (selectedVariant) {
+    const own = Array.isArray(selectedVariant.colors)
+      ? selectedVariant.colors.map((c) => String(c).trim()).filter(Boolean)
+      : [];
+    if (own.length) return own;
+    // This size has no colors on purpose when other sizes do.
+    if (anySizeHasColors) return [];
+    return productColors;
+  }
+
+  if (!variants.length) return productColors;
+  // Wait for a size when colors are per-size.
+  if (anySizeHasColors) return [];
+  return productColors;
+}
 
 export const getRelatedProducts = <T extends { id: string; categorySlug: string }>(
   products: T[],

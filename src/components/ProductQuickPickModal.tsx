@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useCart } from "@/context/CartContext";
 import type { Product } from "@/data/products";
-import { isColorHex } from "@/data/products";
+import { colorsForSelection, isColorHex } from "@/data/products";
 import { formatNaira } from "@/lib/format";
 
 function purchaseCap(stock: number, maxPerOrder?: number) {
@@ -37,7 +37,6 @@ export default function ProductQuickPickModal({
 }: Props) {
   const variants = product.variants ?? [];
   const hasSizes = variants.length > 0;
-  const hasColors = Boolean(product.colors && product.colors.length > 0);
   const optionLooksLikeSize = variants.some((v) => {
     const t = v.label.trim();
     return /^\d{2,3}$/.test(t) || /^age\s*\d+/i.test(t) || /^(xxs|xs|s|m|l|xl|xxl|xxxl)$/i.test(t);
@@ -79,9 +78,21 @@ export default function ProductQuickPickModal({
     [variants, variantId]
   );
 
+  const availableColors = useMemo(
+    () => colorsForSelection(product, selected),
+    [product, selected]
+  );
+  const hasColors = availableColors.length > 0;
+  const showColorPicker = hasColors && (!hasSizes || Boolean(selected));
+
+  useEffect(() => {
+    if (!color) return;
+    if (!availableColors.includes(color)) setColor(undefined);
+  }, [availableColors, color]);
+
   const unitPrice = hasSizes ? selected?.price ?? product.price : product.price;
   const needsSize = hasSizes && !selected;
-  const needsColor = hasSizes && hasColors && !color;
+  const needsColor = hasSizes && showColorPicker && !color;
   const choiceReady = !needsSize && !needsColor;
   const choiceCap = hasSizes
     ? selected
@@ -217,6 +228,7 @@ export default function ProductQuickPickModal({
                       disabled={soldOut}
                       onClick={() => {
                         setVariantId(v.id);
+                        setColor(undefined);
                         setError("");
                       }}
                       className={`min-w-[3.25rem] rounded-xl border px-3 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
@@ -244,13 +256,28 @@ export default function ProductQuickPickModal({
             </div>
           ) : null}
 
-          {hasColors ? (
+          {hasSizes &&
+          !selected &&
+          (Boolean(product.colors?.length) ||
+            variants.some((v) => Array.isArray(v.colors) && v.colors.length > 0)) ? (
+            <p className="text-xs text-neutral-500">
+              Select a {optionTitle.toLowerCase()} to see colors for that option.
+            </p>
+          ) : null}
+
+          {showColorPicker ? (
             <div>
               <p className="text-sm font-medium text-neutral-800">
                 Color <span className="text-red-600">*</span>
+                {selected ? (
+                  <span className="font-normal text-neutral-500">
+                    {" "}
+                    for {selected.label}
+                  </span>
+                ) : null}
               </p>
               <div className="mt-2 flex flex-wrap gap-2" role="radiogroup" aria-label="Color">
-                {product.colors!.map((c) => {
+                {availableColors.map((c) => {
                   const selectedColor = color === c;
                   const hex = isColorHex(c);
                   return (

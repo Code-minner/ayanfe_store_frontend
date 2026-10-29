@@ -4,7 +4,11 @@ import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { Product } from "@/data/products";
-import { isColorHex, piecesFromPackLabel } from "@/data/products";
+import {
+  colorsForSelection,
+  isColorHex,
+  piecesFromPackLabel,
+} from "@/data/products";
 import { useCart } from "@/context/CartContext";
 import { formatNaira } from "@/lib/format";
 import {
@@ -26,7 +30,6 @@ export default function ProductDetailClient({ product }: { product: Product }) {
   const gallery = product.images?.length ? product.images : [product.image];
   const variants = product.variants ?? [];
   const hasOptions = variants.length > 0;
-  const hasColors = Boolean(product.colors && product.colors.length > 0);
   const forcePick = searchParams.get("pick") === "1";
   const optionLooksLikeSize = variants.some((v) => {
     const t = v.label.trim();
@@ -42,6 +45,19 @@ export default function ProductDetailClient({ product }: { product: Product }) {
   const [added, setAdded] = useState(false);
   const [limitMsg, setLimitMsg] = useState("");
 
+  const selectedVariant = useMemo(
+    () => (variantId ? variants.find((v) => v.id === variantId) : undefined),
+    [variants, variantId]
+  );
+
+  const availableColors = useMemo(
+    () => colorsForSelection(product, selectedVariant),
+    [product, selectedVariant]
+  );
+  const hasColors = availableColors.length > 0;
+  const colorPickerReady = !hasOptions || Boolean(selectedVariant);
+  const showColorPicker = hasColors && colorPickerReady;
+
   useEffect(() => {
     if (!forcePick) return;
     setLimitMsg(
@@ -56,16 +72,16 @@ export default function ProductDetailClient({ product }: { product: Product }) {
     optionsRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, [forcePick, hasOptions, hasColors, optionWord]);
 
-  const selectedVariant = useMemo(
-    () => (variantId ? variants.find((v) => v.id === variantId) : undefined),
-    [variants, variantId]
-  );
+  useEffect(() => {
+    if (!color) return;
+    if (!availableColors.includes(color)) setColor(undefined);
+  }, [availableColors, color]);
 
   const unitPrice = hasOptions ? selectedVariant?.price ?? product.price : product.price;
   const rawStock = hasOptions ? selectedVariant?.stock ?? 0 : product.stock ?? 0;
   const needsSize = hasOptions && !selectedVariant;
-  // Color is only required when this product has admin-set options.
-  const needsColor = hasOptions && hasColors && !color;
+  // Color required only when sizes exist and this choice has colors.
+  const needsColor = hasOptions && showColorPicker && !color;
   const choiceReady = !needsSize && !needsColor;
   /** Absolute max for this size/color line (stock ∩ maxPerOrder). */
   const choiceCap = hasOptions
@@ -339,6 +355,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                     disabled={soldOut}
                     onClick={() => {
                       setVariantId(v.id);
+                      setColor(undefined);
                       setLimitMsg("");
                     }}
                     className={`min-w-[4.5rem] rounded-xl border px-3.5 py-2.5 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
@@ -369,7 +386,16 @@ export default function ProductDetailClient({ product }: { product: Product }) {
           </div>
         )}
 
-        {hasColors && (
+        {hasOptions &&
+        !selectedVariant &&
+        (Boolean(product.colors?.length) ||
+          variants.some((v) => Array.isArray(v.colors) && v.colors.length > 0)) ? (
+          <p className="mt-4 text-xs text-neutral-500">
+            Select a {optionWord} to see available colors for that option.
+          </p>
+        ) : null}
+
+        {showColorPicker && (
           <div className={`mt-6 ${forcePick && needsColor ? "rounded-2xl ring-2 ring-[#4B0A6B] ring-offset-2 p-3" : ""}`}>
             <p className="text-sm font-medium text-neutral-800">
               Color{" "}
@@ -378,9 +404,15 @@ export default function ProductDetailClient({ product }: { product: Product }) {
               ) : (
                 <span className="font-normal text-neutral-500">(optional)</span>
               )}
+              {selectedVariant ? (
+                <span className="font-normal text-neutral-500">
+                  {" "}
+                  for {selectedVariant.label}
+                </span>
+              ) : null}
             </p>
             <div className="mt-2 flex flex-wrap gap-2" role="radiogroup" aria-label="Color">
-              {product.colors!.map((c) => {
+              {availableColors.map((c) => {
                 const selected = color === c;
                 const hex = isColorHex(c);
                 return (
@@ -416,7 +448,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
         {!hasOptions ? (
           <p className="mt-6 text-xs text-neutral-500">
             No size or pack options on this product yet. It uses overall stock
-            {hasColors ? "; color is optional" : ""}.
+            {showColorPicker ? "; color is optional" : ""}.
           </p>
         ) : null}
 
