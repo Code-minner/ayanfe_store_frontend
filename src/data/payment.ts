@@ -6,9 +6,9 @@ export type BankTransferDetails = {
 };
 
 export const BANK_TRANSFER: BankTransferDetails = {
-  bankName: "First Bank",
-  accountName: "ATTOG STORE",
-  accountNumber: "9182747839",
+  bankName: "OPay",
+  accountName: "Olasupo Toyin",
+  accountNumber: "8020705719",
 };
 
 /** No flat service fee. Totals are subtotal + shipping only. */

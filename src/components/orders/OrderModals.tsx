@@ -258,7 +258,7 @@ export default function OrderModals({ order, open, onClose }: Props) {
             <thead className="bg-neutral-50 text-neutral-500">
               <tr>
                 <th className="px-3 py-3 font-medium">Product Name</th>
-                <th className="px-3 py-3 font-medium">Qty</th>
+                <th className="px-3 py-3 font-medium">Quantity</th>
                 <th className="px-3 py-3 text-right font-medium">Total</th>
               </tr>
             </thead>

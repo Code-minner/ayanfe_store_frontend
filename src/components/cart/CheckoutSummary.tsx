@@ -81,7 +81,7 @@ export default function CheckoutSummary({
                   );
                 })()}
               </div>
-              <p className="mt-1 text-xs text-neutral-500">Qty {item.quantity}</p>
+              <p className="mt-1 text-xs text-neutral-500">Quantity {item.quantity}</p>
             </div>
           </li>
         ))}
