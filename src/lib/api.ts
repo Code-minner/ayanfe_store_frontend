@@ -1,3 +1,4 @@
+import type { Product, ProductVariant } from "@/data/products";
 import { optimizeImage } from "@/lib/format";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
@@ -67,7 +68,8 @@ export type ApiProduct = {
   isNewArrival?: boolean;
 };
 
-function parseVariants(raw: ApiProduct["variants"]): ApiProductVariant[] {
+/** Normalize API variants (colors may be string or {color,stock}) into ProductVariant. */
+function parseVariants(raw: ApiProduct["variants"]): ProductVariant[] {
   if (!Array.isArray(raw)) return [];
   return raw
     .filter(
@@ -80,20 +82,20 @@ function parseVariants(raw: ApiProduct["variants"]): ApiProductVariant[] {
         typeof v.stock === "number"
     )
     .map((v) => {
-      const colorEntries: ApiProductVariantColor[] = [];
+      const colorEntries: NonNullable<ProductVariant["colors"]> = [];
       const seen = new Set<string>();
       let hasStructuredColorStock = false;
       if (Array.isArray(v.colors)) {
-        for (const raw of v.colors) {
-          if (typeof raw === "string") {
-            const color = raw.trim();
+        for (const entry of v.colors) {
+          if (typeof entry === "string") {
+            const color = entry.trim();
             if (!color) continue;
             const key = color.toLowerCase();
             if (seen.has(key)) continue;
             seen.add(key);
             colorEntries.push({ color, stock: 0 });
-          } else if (raw && typeof raw === "object") {
-            const color = String(raw.color || "").trim();
+          } else if (entry && typeof entry === "object") {
+            const color = String(entry.color || "").trim();
             if (!color) continue;
             const key = color.toLowerCase();
             if (seen.has(key)) continue;
@@ -101,7 +103,7 @@ function parseVariants(raw: ApiProduct["variants"]): ApiProductVariant[] {
             hasStructuredColorStock = true;
             colorEntries.push({
               color,
-              stock: Math.max(0, Math.floor(Number(raw.stock) || 0)),
+              stock: Math.max(0, Math.floor(Number(entry.stock) || 0)),
             });
           }
         }
@@ -112,20 +114,21 @@ function parseVariants(raw: ApiProduct["variants"]): ApiProductVariant[] {
       const stock = hasStructuredColorStock
         ? stockFromColors
         : Math.max(0, Math.floor(v.stock));
-      return {
+      const out: ProductVariant = {
         id: v.id,
         label: v.label,
         price: v.price,
         stock,
-        ...(typeof v.maxPerOrder === "number" && v.maxPerOrder > 0
-          ? { maxPerOrder: Math.floor(v.maxPerOrder) }
-          : {}),
-        ...(colorEntries.length ? { colors: colorEntries } : {}),
       };
+      if (typeof v.maxPerOrder === "number" && v.maxPerOrder > 0) {
+        out.maxPerOrder = Math.floor(v.maxPerOrder);
+      }
+      if (colorEntries.length) out.colors = colorEntries;
+      return out;
     });
 }
 
-export function mapApiProduct(p: ApiProduct, opts?: { thumb?: boolean }) {
+export function mapApiProduct(p: ApiProduct, opts?: { thumb?: boolean }): Product {
   const thumb = opts?.thumb !== false;
   const image = thumb ? optimizeImage(p.image, 480) : p.image;
   const images = (p.images?.length ? p.images : [p.image]).map((src) =>
@@ -161,7 +164,7 @@ export function mapApiProduct(p: ApiProduct, opts?: { thumb?: boolean }) {
 }
 
 export type ProductsPage = {
-  products: ReturnType<typeof mapApiProduct>[];
+  products: Product[];
   total: number;
   page: number;
   limit: number;
@@ -214,7 +217,7 @@ export async function apiFetchProducts(opts?: {
   newer?: boolean;
   limit?: number;
   page?: number;
-}): Promise<ReturnType<typeof mapApiProduct>[]> {
+}): Promise<Product[]> {
   const page = await apiFetchProductsPage(opts);
   return page.products;
 }

@@ -12,6 +12,7 @@ import {
   flattenedColorsForProduct,
   productHasRealSizes,
   stockForColorChoice,
+  type FlatColorChoice,
 } from "@/data/products";
 import { formatNaira } from "@/lib/format";
 
@@ -83,7 +84,7 @@ export default function ProductQuickPickModal({
     [variants, variantId]
   );
 
-  const availableColors = useMemo(() => {
+  const availableColors = useMemo((): FlatColorChoice[] => {
     if (colorOnlyMode) return flattenedColorsForProduct(product);
     return colorsForSelection(product, selected);
   }, [colorOnlyMode, product, selected]);
@@ -288,7 +289,7 @@ export default function ProductQuickPickModal({
                       disabled={soldOut}
                       onClick={() => {
                         setColor(entry.color);
-                        if (colorOnlyMode && "variantId" in entry && entry.variantId) {
+                        if (colorOnlyMode && entry.variantId) {
                           setVariantId(entry.variantId);
                         }
                         setError("");
