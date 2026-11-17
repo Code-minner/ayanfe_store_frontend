@@ -6,6 +6,7 @@ import type { StoredOrder } from "@/data/orders";
 import { statusBadgeClass, statusLabel } from "@/data/orders";
 import { getShippingMethod, type ShippingMethodId } from "@/data/shipping";
 import { useAuth } from "@/context/AuthContext";
+import { colorDisplayName } from "@/data/products";
 import { apiFetchMyInvoice } from "@/lib/api";
 import { formatNaira } from "@/lib/format";
 
@@ -277,7 +278,7 @@ export default function OrderModals({ order, open, onClose }: Props) {
                           item.size
                             ? `${/^\d{2,3}$/.test(String(item.size).trim()) || /^age\s*\d+/i.test(String(item.size).trim()) || /^(xxs|xs|s|m|l|xl|xxl|xxxl)$/i.test(String(item.size).trim()) ? "Size" : "Option"}: ${item.size}`
                             : null,
-                          item.color ? `Color: ${item.color}` : null,
+                          item.color ? `Color: ${colorDisplayName(item.color)}` : null,
                         ]
                           .filter(Boolean)
                           .map((line) => (

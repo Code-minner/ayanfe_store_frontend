@@ -247,6 +247,7 @@ const KNOWN_COLOR_NAMES: Record<string, string> = {
   "#8b5e3c": "Brown",
   "#dc2626": "Red",
   "#2563eb": "Blue",
+  "#4b0a6b": "Purple",
 };
 
 /** Readable label beside a swatch (maps known hex codes to names). */

@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { CartItem } from "@/context/CartContext";
+import { colorDisplayName, colorSwatchBackground } from "@/data/products";
 import { formatNaira } from "@/lib/format";
 import {
   bonusApplies,
@@ -78,10 +79,10 @@ export default function CartItemRow({
               <span className="inline-flex items-center gap-1 text-[11px] font-medium text-neutral-600">
                 <span
                   className="inline-block h-3.5 w-3.5 rounded-[3px] border border-neutral-300"
-                  style={{ backgroundColor: item.color }}
+                  style={{ backgroundColor: colorSwatchBackground(item.color) }}
                   aria-hidden
                 />
-                {item.color}
+                {colorDisplayName(item.color)}
               </span>
             )}
             <p className="text-sm text-neutral-700">

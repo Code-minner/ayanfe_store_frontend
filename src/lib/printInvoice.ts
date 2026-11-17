@@ -1,4 +1,5 @@
 import type { StoredOrder } from "@/data/orders";
+import { colorDisplayName } from "@/data/products";
 import { getShippingMethod, type ShippingMethodId } from "@/data/shipping";
 import { formatNaira } from "@/lib/format";
 
@@ -50,7 +51,7 @@ export function printOrderInvoice(order: StoredOrder) {
       const bits = [
         item.brand ? `Brand: ${item.brand}` : null,
         item.size ? `Option: ${item.size}` : null,
-        item.color ? `Color: ${item.color}` : null,
+        item.color ? `Color: ${colorDisplayName(item.color)}` : null,
       ].filter(Boolean);
       const meta = bits.length
         ? `<div class="meta">${bits.map((b) => escapeHtml(String(b))).join(" · ")}</div>`
