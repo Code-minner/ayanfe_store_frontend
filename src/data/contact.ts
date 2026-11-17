@@ -1,3 +1,10 @@
+export type StorePhone = {
+  /** How it appears on the site */
+  display: string;
+  /** tel: link value */
+  tel: string;
+};
+
 export const STORE_CONTACT = {
   brandName: "Attog Store",
   addressLines: [
@@ -9,6 +16,11 @@ export const STORE_CONTACT = {
     "ayanfettograciousbusiness@gmail.com",
     "admin@ayanfettogracious.com",
   ],
+  phones: [
+    { display: "+2349165328056", tel: "+2349165328056" },
+    { display: "08020705719", tel: "+2348020705719" },
+  ] as const satisfies readonly StorePhone[],
+  /** @deprecated prefer phones[0] / phones list */
   phoneDisplay: "08020705719",
   phoneTel: "+2348020705719",
   whatsapp: "2348020705719",

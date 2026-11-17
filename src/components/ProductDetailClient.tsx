@@ -5,9 +5,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { Product } from "@/data/products";
 import {
+  colorDisplayName,
   colorsForSelection,
-  isColorHex,
+  colorSwatchBackground,
   piecesFromPackLabel,
+  stockForColorChoice,
 } from "@/data/products";
 import { useCart } from "@/context/CartContext";
 import { formatNaira } from "@/lib/format";
@@ -74,11 +76,20 @@ export default function ProductDetailClient({ product }: { product: Product }) {
 
   useEffect(() => {
     if (!color) return;
-    if (!availableColors.includes(color)) setColor(undefined);
+    if (!availableColors.some((c) => c.color === color)) setColor(undefined);
   }, [availableColors, color]);
 
   const unitPrice = hasOptions ? selectedVariant?.price ?? product.price : product.price;
-  const rawStock = hasOptions ? selectedVariant?.stock ?? 0 : product.stock ?? 0;
+  const colorStock = stockForColorChoice(
+    selectedVariant,
+    color,
+    product.stock ?? 0
+  );
+  const rawStock = hasOptions
+    ? showColorPicker && color
+      ? colorStock
+      : selectedVariant?.stock ?? 0
+    : product.stock ?? 0;
   const needsSize = hasOptions && !selectedVariant;
   // Color required only when sizes exist and this choice has colors.
   const needsColor = hasOptions && showColorPicker && !color;
@@ -86,7 +97,12 @@ export default function ProductDetailClient({ product }: { product: Product }) {
   /** Absolute max for this size/color line (stock ∩ maxPerOrder). */
   const choiceCap = hasOptions
     ? selectedVariant
-      ? purchaseCap(selectedVariant.stock, selectedVariant.maxPerOrder)
+      ? purchaseCap(
+          showColorPicker
+            ? stockForColorChoice(selectedVariant, color, selectedVariant.stock)
+            : selectedVariant.stock,
+          selectedVariant.maxPerOrder
+        )
       : 0
     : purchaseCap(product.stock ?? 0);
   const inCartForChoice = choiceReady
@@ -137,10 +153,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
       return;
     }
     if (availableStock <= 0) {
-      const label = selectedVariant?.label || "this option";
-      setLimitMsg(
-        `You already have the max for ${optionWord} ${label}${color ? ` / ${color}` : ""} in your cart. Pick another ${optionWord} or color to add more.`
-      );
+      setLimitMsg("Nothing left to add for this choice.");
       return;
     }
 
@@ -166,20 +179,12 @@ export default function ProductDetailClient({ product }: { product: Product }) {
     );
 
     if (result.addedQty <= 0) {
-      setLimitMsg(
-        `That ${optionWord}${color ? " / color" : ""} is already at its limit in your cart. Pick another ${optionWord} or color.`
-      );
+      setLimitMsg("Nothing left to add for this choice.");
       return;
     }
 
     setAdded(true);
-    if (result.atLimit || selectedVariant?.maxPerOrder) {
-      setLimitMsg(
-        `Added ${result.addedQty}. Limit for this ${optionWord}${color ? " / color" : ""} is ${choiceCap}. You can still add a different ${optionWord} or color.`
-      );
-    } else {
-      setLimitMsg("");
-    }
+    setLimitMsg("");
     // Clear choice so they can immediately pick another size/color.
     setVariantId(undefined);
     setColor(undefined);
@@ -251,7 +256,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
           <p className="text-sm text-neutral-500">{product.category}</p>
         )}
         {product.brand ? (
-          <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-[#4B0A6B]">
+          <p className="mt-0.5 text-[11px] font-medium text-neutral-500">
             {product.brand}
           </p>
         ) : null}
@@ -298,34 +303,24 @@ export default function ProductDetailClient({ product }: { product: Product }) {
           </p>
         )}
 
-        <dl className="mt-6 grid gap-3 text-sm sm:grid-cols-2">
-          {product.brand ? (
-            <div className="rounded-xl border border-neutral-200 bg-white px-4 py-3">
-              <dt className="text-neutral-500">Brand</dt>
-              <dd className="mt-0.5 font-medium text-neutral-900">{product.brand}</dd>
+        <dl className="mt-5 space-y-1.5 text-sm">
+          {product.sku ? (
+            <div className="flex flex-wrap gap-x-2">
+              <dt className="text-neutral-500">SKU</dt>
+              <dd className="font-medium text-neutral-800">{product.sku}</dd>
             </div>
           ) : null}
-          {product.sku && (
-            <div className="rounded-xl border border-neutral-200 bg-white px-4 py-3">
-              <dt className="text-neutral-500">SKU</dt>
-              <dd className="mt-0.5 font-medium text-neutral-900">{product.sku}</dd>
-            </div>
-          )}
-          <div className="rounded-xl border border-neutral-200 bg-white px-4 py-3">
+          <div className="flex flex-wrap gap-x-2">
             <dt className="text-neutral-500">Availability</dt>
-            <dd className="mt-0.5 font-medium text-neutral-900">
+            <dd className="font-medium">
               {!hasOptions || selectedVariant ? (
-                availableStock > 0 ? (
-                  <span className="inline-flex items-center gap-1.5 text-green-700">
-                    <span aria-hidden>✓</span>
-                    {rawStock} in stock
-                    {selectedVariant ? ` (${selectedVariant.label})` : ""}
-                  </span>
+                rawStock > 0 ? (
+                  <span className="text-green-700">{rawStock} in stock</span>
                 ) : (
-                  "Out of stock"
+                  <span className="text-neutral-800">Out of stock</span>
                 )
               ) : (
-                <span className="text-amber-700">Select an option to see stock</span>
+                <span className="text-neutral-500">Select an option</span>
               )}
             </dd>
           </div>
@@ -337,15 +332,13 @@ export default function ProductDetailClient({ product }: { product: Product }) {
             <p className="text-sm font-medium text-neutral-800">
               {optionTitle} <span className="font-normal text-red-600">*</span>
             </p>
-            <p className="mt-1 text-xs text-neutral-500">
-              Tap to select. Stock shown is how many are left for that {optionTitle.toLowerCase()}.
-            </p>
-            <div className="mt-2 flex flex-wrap gap-2" role="radiogroup" aria-label={optionTitle}>
+            <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2" role="radiogroup" aria-label={optionTitle}>
               {variants.map((v) => {
                 const selected = selectedVariant?.id === v.id;
                 const soldOut = v.stock <= 0;
-                const pcs = piecesFromPackLabel(v.label);
-                const each = pcs && pcs > 1 ? v.price / pcs : null;
+                const stockText = soldOut ? "sold out" : `${v.stock} in stock`;
+                // Skip repeating tiny labels like "1" when stock is the useful info.
+                const showLabel = v.label.trim() && !/^\d{1,2}$/.test(v.label.trim());
                 return (
                   <button
                     key={v.id}
@@ -358,27 +351,13 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                       setColor(undefined);
                       setLimitMsg("");
                     }}
-                    className={`min-w-[4.5rem] rounded-xl border px-3.5 py-2.5 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                    className={`bg-transparent p-0 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                       selected
-                        ? "border-[#4B0A6B] bg-[#4B0A6B] text-white"
-                        : "border-neutral-200 bg-white text-neutral-900 hover:border-[#4B0A6B]/50"
+                        ? "font-semibold text-[#4B0A6B] underline underline-offset-4"
+                        : "font-medium text-neutral-800 hover:text-[#4B0A6B]"
                     }`}
                   >
-                    <span className="block font-semibold">{v.label}</span>
-                    <span className={`mt-0.5 block text-xs ${selected ? "text-white/85" : "text-neutral-500"}`}>
-                      {formatNaira(v.price)}
-                      {soldOut ? " · sold out" : ` · ${v.stock} left`}
-                    </span>
-                    {v.maxPerOrder && v.maxPerOrder > 0 ? (
-                      <span className={`mt-0.5 block text-[11px] ${selected ? "text-white/75" : "text-neutral-400"}`}>
-                        Max {v.maxPerOrder} / order
-                      </span>
-                    ) : null}
-                    {each !== null && (
-                      <span className={`mt-0.5 block text-[11px] ${selected ? "text-white/75" : "text-neutral-400"}`}>
-                        {formatNaira(each)}/pc
-                      </span>
-                    )}
+                    {showLabel ? `${v.label} · ${stockText}` : stockText}
                   </button>
                 );
               })}
@@ -386,57 +365,43 @@ export default function ProductDetailClient({ product }: { product: Product }) {
           </div>
         )}
 
-        {hasOptions &&
-        !selectedVariant &&
-        (Boolean(product.colors?.length) ||
-          variants.some((v) => Array.isArray(v.colors) && v.colors.length > 0)) ? (
-          <p className="mt-4 text-xs text-neutral-500">
-            Select a {optionWord} to see available colors for that option.
-          </p>
-        ) : null}
-
         {showColorPicker && (
           <div className={`mt-6 ${forcePick && needsColor ? "rounded-2xl ring-2 ring-[#4B0A6B] ring-offset-2 p-3" : ""}`}>
             <p className="text-sm font-medium text-neutral-800">
               Color{" "}
-              {hasOptions ? (
-                <span className="font-normal text-red-600">*</span>
-              ) : (
-                <span className="font-normal text-neutral-500">(optional)</span>
-              )}
-              {selectedVariant ? (
-                <span className="font-normal text-neutral-500">
-                  {" "}
-                  for {selectedVariant.label}
-                </span>
-              ) : null}
+              {hasOptions ? <span className="font-normal text-red-600">*</span> : null}
             </p>
-            <div className="mt-2 flex flex-wrap gap-2" role="radiogroup" aria-label="Color">
-              {availableColors.map((c) => {
-                const selected = color === c;
-                const hex = isColorHex(c);
+            <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2" role="radiogroup" aria-label="Color">
+              {availableColors.map((entry) => {
+                const selected = color === entry.color;
+                const label = colorDisplayName(entry.color);
+                const soldOut = entry.stock <= 0;
+                const stockText = soldOut ? "sold out" : `${entry.stock} in stock`;
                 return (
                   <button
-                    key={c}
+                    key={entry.color}
                     type="button"
                     role="radio"
                     aria-checked={selected}
-                    aria-label={`Color ${c}`}
+                    aria-label={`${label} · ${stockText}`}
+                    disabled={soldOut}
                     onClick={() => {
-                      setColor(c);
+                      setColor(entry.color);
                       setLimitMsg("");
                     }}
-                    className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm transition-colors ${
+                    className={`inline-flex items-center gap-2 bg-transparent p-0 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                       selected
-                        ? "border-[#4B0A6B] bg-[#F8F1FA] text-[#4B0A6B]"
-                        : "border-neutral-200 bg-white text-neutral-800 hover:border-[#4B0A6B]/40"
+                        ? "font-semibold text-[#4B0A6B] underline underline-offset-4"
+                        : "font-medium text-neutral-800 hover:text-[#4B0A6B]"
                     }`}
                   >
                     <span
-                      className="h-5 w-5 rounded-full border border-neutral-300"
-                      style={{ backgroundColor: hex ? c : "#e5e5e5" }}
+                      className="h-4 w-4 shrink-0 rounded-full border border-neutral-300"
+                      style={{ backgroundColor: colorSwatchBackground(entry.color) }}
                     />
-                    {hex ? null : <span className="font-medium">{c}</span>}
+                    <span>
+                      {label} · {stockText}
+                    </span>
                   </button>
                 );
               })}
@@ -444,13 +409,6 @@ export default function ProductDetailClient({ product }: { product: Product }) {
           </div>
         )}
         </div>
-
-        {!hasOptions ? (
-          <p className="mt-6 text-xs text-neutral-500">
-            No size or pack options on this product yet. It uses overall stock
-            {showColorPicker ? "; color is optional" : ""}.
-          </p>
-        ) : null}
 
         <div className="mt-6">
           <div className="flex flex-wrap items-end justify-between gap-2">
@@ -472,11 +430,13 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                 type="button"
                 disabled={!selectedVariant && hasOptions ? true : n > availableStock}
                 onClick={() => {
-                  if (n > availableStock && selectedVariant?.maxPerOrder) {
+                  if (n > availableStock) {
                     setLimitMsg(
-                      `You can only buy ${selectedVariant.maxPerOrder} of ${optionWord} ${selectedVariant.label}${color ? ` / ${color}` : ""}. Pick another ${optionWord} or color.`
+                      availableStock > 0
+                        ? `Only ${availableStock} left for this choice.`
+                        : "This choice is out of stock in your cart limit."
                     );
-                    setQty(availableStock);
+                    setQty(Math.max(1, availableStock));
                     return;
                   }
                   setLimitMsg("");
@@ -513,13 +473,8 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                 const next = Number(e.target.value);
                 if (!Number.isFinite(next)) return;
                 const capped = Math.min(Math.max(1, Math.floor(next)), Math.max(1, availableStock));
-                if (
-                  selectedVariant?.maxPerOrder &&
-                  Math.floor(next) > selectedVariant.maxPerOrder
-                ) {
-                  setLimitMsg(
-                    `You can only buy ${selectedVariant.maxPerOrder} of ${optionWord} ${selectedVariant.label}${color ? ` / ${color}` : ""}. Pick another ${optionWord} or color.`
-                  );
+                if (Math.floor(next) > availableStock && availableStock > 0) {
+                  setLimitMsg(`Only ${availableStock} left for this choice.`);
                 } else {
                   setLimitMsg("");
                 }
@@ -534,9 +489,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
               disabled={needsSize || availableStock <= 0 || qty >= availableStock}
               onClick={() => {
                 if (availableStock <= 0) {
-                  setLimitMsg(
-                    `This ${optionWord}${color ? " / color" : ""} is at its limit in your cart. Pick another ${optionWord} or color.`
-                  );
+                  setLimitMsg("Nothing left to add for this choice.");
                   return;
                 }
                 setQty((q) => Math.min(availableStock, q + 1));
@@ -546,28 +499,6 @@ export default function ProductDetailClient({ product }: { product: Product }) {
               +
             </button>
           </div>
-          {choiceReady && selectedVariant?.maxPerOrder ? (
-            <p className="mt-2 text-xs text-neutral-500">
-              Limit {selectedVariant.maxPerOrder} of this {optionWord}
-              {color ? ` / color` : ""} per order
-              {inCartForChoice > 0 ? ` · ${inCartForChoice} already in cart` : ""}
-              {availableStock > 0
-                ? ` · ${availableStock} left to add`
-                : " · limit reached for this choice"}
-              . Other sizes or colors can still be added. ({rawStock} in stock).
-            </p>
-          ) : choiceReady && availableStock > 0 ? (
-            <p className="mt-2 text-xs text-neutral-500">
-              Max {availableStock} more available for this option
-              {inCartForChoice > 0 ? ` (${inCartForChoice} already in cart)` : ""}.
-            </p>
-          ) : choiceReady && availableStock <= 0 ? (
-            <p className="mt-2 text-xs text-amber-700">
-              This {optionWord}
-              {color ? " / color" : ""} is at its limit in your cart. Pick another{" "}
-              {optionWord} or color to add more.
-            </p>
-          ) : null}
           {limitMsg ? (
             <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800" role="status">
               {limitMsg}

@@ -58,9 +58,17 @@ export default function HelpPage() {
 
           <p className="mt-6 text-sm text-neutral-500">
             Call{" "}
-            <a href={`tel:${STORE_CONTACT.phoneTel}`} className="text-[#4B0A6B] underline-offset-2 hover:underline">
-              {STORE_CONTACT.phoneDisplay}
-            </a>{" "}
+            {STORE_CONTACT.phones.map((phone, i) => (
+              <span key={phone.tel}>
+                {i > 0 ? " or " : null}
+                <a
+                  href={`tel:${phone.tel}`}
+                  className="text-[#4B0A6B] underline-offset-2 hover:underline"
+                >
+                  {phone.display}
+                </a>
+              </span>
+            ))}{" "}
             or email{" "}
             <a
               href={`mailto:${STORE_CONTACT.emails[0]}`}

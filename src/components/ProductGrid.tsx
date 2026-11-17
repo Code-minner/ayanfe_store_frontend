@@ -6,7 +6,6 @@ import { useProductQuickAdd } from "@/hooks/useProductQuickAdd";
 import {
   productIsOutOfStock,
   productRequiresOptions,
-  productSizeLabels,
   type Product,
 } from "@/data/products";
 
@@ -46,11 +45,15 @@ export default function ProductGrid({
         }`}
       >
         {visible.map((product, index) => {
-          const sizes = productSizeLabels(product);
           const requiresOptions = productRequiresOptions(product);
-          const optionsHint = sizes.length
-            ? `Sizes: ${sizes.slice(0, 8).join(", ")}${sizes.length > 8 ? "…" : ""}`
-            : undefined;
+          const stock =
+            typeof product.stock === "number" ? product.stock : undefined;
+          const stockHint =
+            stock !== undefined
+              ? stock > 0
+                ? `${stock} in stock`
+                : "Out of stock"
+              : undefined;
 
           return (
             <div
@@ -68,8 +71,7 @@ export default function ProductGrid({
                 category={hideCategory ? undefined : product.category}
                 brand={product.brand}
                 colors={product.colors}
-                subtitle={product.subtitle}
-                optionsHint={optionsHint}
+                optionsHint={stockHint}
                 requiresOptions={requiresOptions}
                 originalPrice={product.originalPrice}
                 discountPercent={product.discountPercent}

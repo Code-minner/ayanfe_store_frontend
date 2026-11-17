@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 };
 
 export default function ContactPage() {
-  const { addressLines, emails, phoneDisplay, phoneTel, whatsapp } = STORE_CONTACT;
+  const { addressLines, emails, phones, whatsapp } = STORE_CONTACT;
 
   return (
     <>
@@ -93,18 +93,22 @@ export default function ContactPage() {
 
                 <div>
                   <dt className="font-semibold text-neutral-900">Phone</dt>
-                  <dd className="mt-2">
-                    <a
-                      href={`tel:${phoneTel}`}
-                      className="text-[#4B0A6B] underline-offset-2 hover:underline"
-                    >
-                      {phoneDisplay}
-                    </a>
+                  <dd className="mt-2 space-y-1">
+                    {phones.map((phone) => (
+                      <p key={phone.tel}>
+                        <a
+                          href={`tel:${phone.tel}`}
+                          className="text-[#4B0A6B] underline-offset-2 hover:underline"
+                        >
+                          {phone.display}
+                        </a>
+                      </p>
+                    ))}
                   </dd>
                 </div>
               </dl>
 
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                 <a
                   href={`https://wa.me/${whatsapp}`}
                   target="_blank"
@@ -113,12 +117,15 @@ export default function ContactPage() {
                 >
                   WhatsApp us
                 </a>
-                <a
-                  href={`tel:${phoneTel}`}
-                  className="inline-flex justify-center rounded-full border border-neutral-300 px-5 py-2.5 text-sm font-medium text-neutral-800"
-                >
-                  Call {phoneDisplay}
-                </a>
+                {phones.map((phone) => (
+                  <a
+                    key={phone.tel}
+                    href={`tel:${phone.tel}`}
+                    className="inline-flex justify-center rounded-full border border-neutral-300 px-5 py-2.5 text-sm font-medium text-neutral-800"
+                  >
+                    Call {phone.display}
+                  </a>
+                ))}
               </div>
 
               <p className="mt-6 text-xs text-neutral-500">

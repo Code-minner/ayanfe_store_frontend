@@ -11,6 +11,7 @@ import { Suspense } from "react";
 import CurrentYear from "./CurrentYear";
 import BrandLogo from "@/components/BrandLogo";
 import { BRAND_NAME } from "@/lib/brand";
+import { STORE_CONTACT } from "@/data/contact";
 
 /* -------------------------------------------------------------------------- */
 /*  Types                                                                      */
@@ -112,6 +113,21 @@ export default function Footer({
               </li>
             ))}
           </ul>
+
+          <div className="mt-5 space-y-1.5 text-sm text-white/90">
+            <p className="font-[family-name:var(--font-anton)] text-base tracking-wide text-white">
+              Call us
+            </p>
+            {STORE_CONTACT.phones.map((phone) => (
+              <a
+                key={phone.tel}
+                href={`tel:${phone.tel}`}
+                className="block underline-offset-4 transition-colors hover:text-white hover:underline"
+              >
+                {phone.display}
+              </a>
+            ))}
+          </div>
 
           <p className="mt-4 text-sm text-white/90">
             &copy;

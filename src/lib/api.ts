@@ -28,13 +28,18 @@ export type AuthApiUser = {
   avatarUrl?: string | null;
 };
 
+export type ApiProductVariantColor = {
+  color: string;
+  stock: number;
+};
+
 export type ApiProductVariant = {
   id: string;
   label: string;
   price: number;
   stock: number;
   maxPerOrder?: number;
-  colors?: string[];
+  colors?: Array<string | ApiProductVariantColor>;
 };
 
 export type ApiProduct = {
@@ -75,24 +80,47 @@ function parseVariants(raw: ApiProduct["variants"]): ApiProductVariant[] {
         typeof v.stock === "number"
     )
     .map((v) => {
-      const colors = Array.isArray(v.colors)
-        ? [
-            ...new Set(
-              v.colors
-                .map((c) => String(c || "").trim())
-                .filter(Boolean)
-            ),
-          ]
-        : [];
+      const colorEntries: ApiProductVariantColor[] = [];
+      const seen = new Set<string>();
+      let hasStructuredColorStock = false;
+      if (Array.isArray(v.colors)) {
+        for (const raw of v.colors) {
+          if (typeof raw === "string") {
+            const color = raw.trim();
+            if (!color) continue;
+            const key = color.toLowerCase();
+            if (seen.has(key)) continue;
+            seen.add(key);
+            colorEntries.push({ color, stock: 0 });
+          } else if (raw && typeof raw === "object") {
+            const color = String(raw.color || "").trim();
+            if (!color) continue;
+            const key = color.toLowerCase();
+            if (seen.has(key)) continue;
+            seen.add(key);
+            hasStructuredColorStock = true;
+            colorEntries.push({
+              color,
+              stock: Math.max(0, Math.floor(Number(raw.stock) || 0)),
+            });
+          }
+        }
+      }
+      const stockFromColors = colorEntries.reduce((sum, c) => sum + c.stock, 0);
+      // Only replace size stock when colors were saved with per-color stock.
+      // Legacy string[] colors must keep the size stock or products look OOS.
+      const stock = hasStructuredColorStock
+        ? stockFromColors
+        : Math.max(0, Math.floor(v.stock));
       return {
         id: v.id,
         label: v.label,
         price: v.price,
-        stock: v.stock,
+        stock,
         ...(typeof v.maxPerOrder === "number" && v.maxPerOrder > 0
           ? { maxPerOrder: Math.floor(v.maxPerOrder) }
           : {}),
-        ...(colors.length ? { colors } : {}),
+        ...(colorEntries.length ? { colors: colorEntries } : {}),
       };
     });
 }

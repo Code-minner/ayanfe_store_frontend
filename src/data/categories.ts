@@ -79,6 +79,13 @@ export const CATEGORIES: CategoryInfo[] = [
     heroImage: "/assets/souvenirs.png",
     icon: "/assets/Featured9.png",
   },
+  {
+    slug: "bags",
+    name: "Bags",
+    description: "Handbags, tote bags, and everyday carry.",
+    heroImage: "/assets/bags.jpeg",
+    icon: "/assets/bags.jpeg",
+  },
 ];
 
 export const getCategory = (slug: string) =>

@@ -41,7 +41,7 @@ export interface ProductCardProps {
   compact?: boolean;
   /** When true, card add sends shopper to pick size/color. */
   requiresOptions?: boolean;
-  /** e.g. "Sizes: 40, 41, 42" shown under the title. */
+  /** Short stock line under the title, e.g. "12 in stock". */
   optionsHint?: string;
   /** Still listed, but cannot buy until restocked. */
   outOfStock?: boolean;

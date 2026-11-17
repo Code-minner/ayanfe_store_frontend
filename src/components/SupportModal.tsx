@@ -10,7 +10,7 @@ type SupportModalProps = {
 export default function SupportModal({ open, onClose }: SupportModalProps) {
   if (!open) return null;
 
-  const { phoneDisplay, phoneTel, whatsapp, emails } = STORE_CONTACT;
+  const { phones, whatsapp, emails } = STORE_CONTACT;
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
@@ -64,12 +64,15 @@ export default function SupportModal({ open, onClose }: SupportModalProps) {
           >
             Chat on WhatsApp
           </a>
-          <a
-            href={`tel:${phoneTel}`}
-            className="rounded-xl border border-neutral-300 px-4 py-3 text-sm font-semibold text-neutral-900"
-          >
-            Call {phoneDisplay}
-          </a>
+          {phones.map((phone) => (
+            <a
+              key={phone.tel}
+              href={`tel:${phone.tel}`}
+              className="rounded-xl border border-neutral-300 px-4 py-3 text-sm font-semibold text-neutral-900"
+            >
+              Call {phone.display}
+            </a>
+          ))}
           <a
             href={`mailto:${emails[0]}`}
             className="rounded-xl border border-neutral-300 px-4 py-3 text-sm font-semibold text-neutral-900"
@@ -77,14 +80,6 @@ export default function SupportModal({ open, onClose }: SupportModalProps) {
             Email Support
           </a>
         </div>
-
-        <a
-          href="/contact"
-          className="mt-5 inline-block text-sm font-medium text-[#4B0A6B] underline underline-offset-2"
-          onClick={onClose}
-        >
-          Contact & FAQ page
-        </a>
       </div>
     </div>
   );

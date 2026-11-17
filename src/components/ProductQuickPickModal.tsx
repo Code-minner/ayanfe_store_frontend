@@ -5,7 +5,14 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useCart } from "@/context/CartContext";
 import type { Product } from "@/data/products";
-import { colorsForSelection, isColorHex } from "@/data/products";
+import {
+  colorDisplayName,
+  colorsForSelection,
+  colorSwatchBackground,
+  flattenedColorsForProduct,
+  productHasRealSizes,
+  stockForColorChoice,
+} from "@/data/products";
 import { formatNaira } from "@/lib/format";
 
 function purchaseCap(stock: number, maxPerOrder?: number) {
@@ -37,11 +44,9 @@ export default function ProductQuickPickModal({
 }: Props) {
   const variants = product.variants ?? [];
   const hasSizes = variants.length > 0;
-  const optionLooksLikeSize = variants.some((v) => {
-    const t = v.label.trim();
-    return /^\d{2,3}$/.test(t) || /^age\s*\d+/i.test(t) || /^(xxs|xs|s|m|l|xl|xxl|xxxl)$/i.test(t);
-  });
-  const optionTitle = optionLooksLikeSize ? "Size" : "Option";
+  /** Real shoe/clothing sizes only. Fake "1" options stay hidden. */
+  const showSizePicker = hasSizes && productHasRealSizes(product);
+  const colorOnlyMode = hasSizes && !showSizePicker;
 
   const { choiceQuantity } = useCart();
   const [variantId, setVariantId] = useState<string | undefined>();
@@ -78,31 +83,46 @@ export default function ProductQuickPickModal({
     [variants, variantId]
   );
 
-  const availableColors = useMemo(
-    () => colorsForSelection(product, selected),
-    [product, selected]
-  );
+  const availableColors = useMemo(() => {
+    if (colorOnlyMode) return flattenedColorsForProduct(product);
+    return colorsForSelection(product, selected);
+  }, [colorOnlyMode, product, selected]);
   const hasColors = availableColors.length > 0;
-  const showColorPicker = hasColors && (!hasSizes || Boolean(selected));
+  const showColorPicker =
+    hasColors && (colorOnlyMode || !hasSizes || Boolean(selected));
 
   useEffect(() => {
     if (!color) return;
-    if (!availableColors.includes(color)) setColor(undefined);
+    if (!availableColors.some((c) => c.color === color)) setColor(undefined);
   }, [availableColors, color]);
 
-  const unitPrice = hasSizes ? selected?.price ?? product.price : product.price;
-  const needsSize = hasSizes && !selected;
-  const needsColor = hasSizes && showColorPicker && !color;
+  const flatColor = colorOnlyMode
+    ? availableColors.find((c) => c.color === color)
+    : undefined;
+  const unitPrice = colorOnlyMode
+    ? flatColor?.price ?? product.price
+    : hasSizes
+      ? selected?.price ?? product.price
+      : product.price;
+  const needsSize = showSizePicker && !selected;
+  const needsColor = showColorPicker && !color;
   const choiceReady = !needsSize && !needsColor;
-  const choiceCap = hasSizes
-    ? selected
-      ? purchaseCap(selected.stock, selected.maxPerOrder)
-      : 0
-    : purchaseCap(product.stock ?? 0);
+  const choiceCap = colorOnlyMode
+    ? purchaseCap(flatColor?.stock ?? 0, flatColor?.maxPerOrder)
+    : hasSizes
+      ? selected
+        ? purchaseCap(
+            showColorPicker
+              ? stockForColorChoice(selected, color, selected.stock)
+              : selected.stock,
+            selected.maxPerOrder
+          )
+        : 0
+      : purchaseCap(product.stock ?? 0);
   const inCartForChoice = choiceReady
     ? choiceQuantity({
         productId: product.id,
-        variantId: hasSizes ? selected?.id : undefined,
+        variantId: hasSizes ? selected?.id ?? flatColor?.variantId : undefined,
         color,
       })
     : 0;
@@ -124,7 +144,7 @@ export default function ProductQuickPickModal({
     setError("");
     setJustAdded("");
     if (needsSize) {
-      setError(`Please select a ${optionTitle.toLowerCase()}.`);
+      setError("Please select a size.");
       return;
     }
     if (needsColor) {
@@ -132,26 +152,27 @@ export default function ProductQuickPickModal({
       return;
     }
     if (remaining <= 0) {
-      setError(
-        `You already have the max for this ${optionTitle.toLowerCase()}${color ? " / color" : ""} in your cart. Pick another ${optionTitle.toLowerCase()} or color.`
-      );
+      setError("Nothing left to add for this choice.");
       return;
     }
     const safeQty = Math.min(qty, remaining);
-    const labelBits = [selected?.label, color].filter(Boolean).join(" · ");
+    const resolvedVariantId = colorOnlyMode
+      ? flatColor?.variantId
+      : hasSizes
+        ? selected?.id
+        : undefined;
+    const resolvedVariant = resolvedVariantId
+      ? variants.find((v) => v.id === resolvedVariantId)
+      : undefined;
     onConfirm({
-      variantId: hasSizes ? selected?.id : undefined,
-      variantLabel: selected?.label,
+      variantId: resolvedVariantId,
+      variantLabel: resolvedVariant?.label,
       color,
       price: unitPrice,
       maxStock: choiceCap,
       quantity: safeQty,
     });
-    setJustAdded(
-      labelBits
-        ? `Added ${safeQty}× ${labelBits}. Pick another ${optionTitle.toLowerCase()} or color to add more.`
-        : `Added ${safeQty}. You can pick another option to add more.`
-    );
+    setJustAdded(`Added ${safeQty}`);
     setVariantId(undefined);
     setColor(undefined);
     setQty(1);
@@ -210,15 +231,16 @@ export default function ProductQuickPickModal({
         </div>
 
         <div className="flex-1 space-y-5 overflow-y-auto px-4 py-4 sm:px-5">
-          {hasSizes ? (
+          {showSizePicker ? (
             <div>
               <p className="text-sm font-medium text-neutral-800">
-                {optionTitle} <span className="text-red-600">*</span>
+                Size <span className="text-red-600">*</span>
               </p>
-              <div className="mt-2 flex flex-wrap gap-2" role="radiogroup" aria-label={optionTitle}>
+              <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2" role="radiogroup" aria-label="Size">
                 {variants.map((v) => {
                   const selectedSize = selected?.id === v.id;
                   const soldOut = v.stock <= 0;
+                  const stockText = soldOut ? "sold out" : `${v.stock} in stock`;
                   return (
                     <button
                       key={v.id}
@@ -231,24 +253,13 @@ export default function ProductQuickPickModal({
                         setColor(undefined);
                         setError("");
                       }}
-                      className={`min-w-[3.25rem] rounded-xl border px-3 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                      className={`bg-transparent p-0 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                         selectedSize
-                          ? "border-[#4B0A6B] bg-[#4B0A6B] text-white"
-                          : "border-neutral-200 bg-white text-neutral-900 hover:border-[#4B0A6B]/50"
+                          ? "font-semibold text-[#4B0A6B] underline underline-offset-4"
+                          : "font-medium text-neutral-800 hover:text-[#4B0A6B]"
                       }`}
                     >
-                      {v.label}
-                      {!soldOut ? (
-                        <span
-                          className={`mt-0.5 block text-[10px] font-normal ${
-                            selectedSize ? "text-white/80" : "text-neutral-500"
-                          }`}
-                        >
-                          {v.stock} left
-                        </span>
-                      ) : (
-                        <span className="mt-0.5 block text-[10px] font-normal">Sold out</span>
-                      )}
+                      {v.label} · {stockText}
                     </button>
                   );
                 })}
@@ -256,52 +267,45 @@ export default function ProductQuickPickModal({
             </div>
           ) : null}
 
-          {hasSizes &&
-          !selected &&
-          (Boolean(product.colors?.length) ||
-            variants.some((v) => Array.isArray(v.colors) && v.colors.length > 0)) ? (
-            <p className="text-xs text-neutral-500">
-              Select a {optionTitle.toLowerCase()} to see colors for that option.
-            </p>
-          ) : null}
-
           {showColorPicker ? (
             <div>
               <p className="text-sm font-medium text-neutral-800">
                 Color <span className="text-red-600">*</span>
-                {selected ? (
-                  <span className="font-normal text-neutral-500">
-                    {" "}
-                    for {selected.label}
-                  </span>
-                ) : null}
               </p>
-              <div className="mt-2 flex flex-wrap gap-2" role="radiogroup" aria-label="Color">
-                {availableColors.map((c) => {
-                  const selectedColor = color === c;
-                  const hex = isColorHex(c);
+              <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2" role="radiogroup" aria-label="Color">
+                {availableColors.map((entry) => {
+                  const selectedColor = color === entry.color;
+                  const label = colorDisplayName(entry.color);
+                  const soldOut = entry.stock <= 0;
+                  const stockText = soldOut ? "sold out" : `${entry.stock} in stock`;
                   return (
                     <button
-                      key={c}
+                      key={entry.color}
                       type="button"
                       role="radio"
                       aria-checked={selectedColor}
-                      aria-label={`Color ${c}`}
+                      aria-label={`${label} · ${stockText}`}
+                      disabled={soldOut}
                       onClick={() => {
-                        setColor(c);
+                        setColor(entry.color);
+                        if (colorOnlyMode && "variantId" in entry && entry.variantId) {
+                          setVariantId(entry.variantId);
+                        }
                         setError("");
                       }}
-                      className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm transition-colors ${
+                      className={`inline-flex items-center gap-2 bg-transparent p-0 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                         selectedColor
-                          ? "border-[#4B0A6B] bg-[#F8F1FA] text-[#4B0A6B]"
-                          : "border-neutral-200 bg-white text-neutral-800 hover:border-[#4B0A6B]/40"
+                          ? "font-semibold text-[#4B0A6B] underline underline-offset-4"
+                          : "font-medium text-neutral-800 hover:text-[#4B0A6B]"
                       }`}
                     >
                       <span
-                        className="h-5 w-5 rounded-full border border-neutral-300"
-                        style={{ backgroundColor: hex ? c : "#e5e5e5" }}
+                        className="h-4 w-4 shrink-0 rounded-full border border-neutral-300"
+                        style={{ backgroundColor: colorSwatchBackground(entry.color) }}
                       />
-                      {hex ? null : <span className="font-medium">{c}</span>}
+                      <span>
+                        {label} · {stockText}
+                      </span>
                     </button>
                   );
                 })}
@@ -311,19 +315,6 @@ export default function ProductQuickPickModal({
 
           <div>
             <p className="text-sm font-medium text-neutral-800">Quantity</p>
-            {choiceReady && selected?.maxPerOrder && selected.maxPerOrder > 0 ? (
-              <p className="mt-1 text-xs text-neutral-500">
-                Max {selected.maxPerOrder} of this {optionTitle.toLowerCase()}
-                {color ? ` / color` : ""} per order
-                {inCartForChoice > 0 ? ` · ${inCartForChoice} already in cart` : ""}
-                {remaining > 0 ? ` · ${remaining} left to add` : " · limit reached"}. Other sizes
-                or colors can still be added.
-              </p>
-            ) : (
-              <p className="mt-1 text-xs text-neutral-500">
-                Limits apply per size and color. After the max for one choice, pick another.
-              </p>
-            )}
             <div className="mt-2 inline-flex items-center gap-3 rounded-full border border-neutral-200 bg-white px-2 py-1.5">
               <button
                 type="button"
@@ -367,11 +358,11 @@ export default function ProductQuickPickModal({
             className="flex w-full items-center justify-center rounded-xl bg-[#4B0A6B] px-5 py-3.5 text-sm font-bold uppercase tracking-wide text-white hover:bg-[#3a0854] disabled:opacity-50"
           >
             {needsSize
-              ? `Select a ${optionTitle.toLowerCase()}`
+              ? "Select a size"
               : needsColor
                 ? "Select a color"
                 : remaining <= 0
-                  ? "Pick another size or color"
+                  ? "Pick another color"
                   : justAdded
                     ? `Add another · ${formatNaira(unitPrice * qty)}`
                     : `Add to cart · ${formatNaira(unitPrice * qty)}`}

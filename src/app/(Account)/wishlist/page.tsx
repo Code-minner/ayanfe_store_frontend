@@ -13,7 +13,6 @@ import { useProductQuickAdd } from "@/hooks/useProductQuickAdd";
 import {
   productIsOutOfStock,
   productRequiresOptions,
-  productSizeLabels,
   type Product,
 } from "@/data/products";
 import { apiFetchProducts } from "@/lib/api";
@@ -104,8 +103,10 @@ export default function WishlistPage() {
                       }}
                       requiresOptions={productRequiresOptions(product)}
                       optionsHint={
-                        productSizeLabels(product).length
-                          ? `Sizes: ${productSizeLabels(product).slice(0, 6).join(", ")}`
+                        typeof product.stock === "number"
+                          ? product.stock > 0
+                            ? `${product.stock} in stock`
+                            : "Out of stock"
                           : undefined
                       }
                       onAdd={(quantity) => {
