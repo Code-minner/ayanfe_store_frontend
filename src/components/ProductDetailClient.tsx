@@ -332,32 +332,51 @@ export default function ProductDetailClient({ product }: { product: Product }) {
             <p className="text-sm font-medium text-neutral-800">
               {optionTitle} <span className="font-normal text-red-600">*</span>
             </p>
-            <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2" role="radiogroup" aria-label={optionTitle}>
+            <div
+              className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4"
+              role="radiogroup"
+              aria-label={optionTitle}
+            >
               {variants.map((v) => {
                 const selected = selectedVariant?.id === v.id;
                 const soldOut = v.stock <= 0;
-                const stockText = soldOut ? "sold out" : `${v.stock} in stock`;
-                // Skip repeating tiny labels like "1" when stock is the useful info.
-                const showLabel = v.label.trim() && !/^\d{1,2}$/.test(v.label.trim());
                 return (
                   <button
                     key={v.id}
                     type="button"
                     role="radio"
                     aria-checked={selected}
+                    aria-label={
+                      soldOut
+                        ? `${v.label}, sold out`
+                        : `${v.label}, ${v.stock} in stock`
+                    }
                     disabled={soldOut}
                     onClick={() => {
                       setVariantId(v.id);
                       setColor(undefined);
                       setLimitMsg("");
                     }}
-                    className={`bg-transparent p-0 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                    className={`flex min-h-[3.25rem] flex-col items-center justify-center rounded-xl border px-2 py-2 text-center transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                       selected
-                        ? "font-semibold text-[#4B0A6B] underline underline-offset-4"
-                        : "font-medium text-neutral-800 hover:text-[#4B0A6B]"
+                        ? "border-[#4B0A6B] bg-[#F8F1FA] text-[#4B0A6B]"
+                        : "border-neutral-200 bg-white text-neutral-900 hover:border-[#4B0A6B]/50"
                     }`}
                   >
-                    {showLabel ? `${v.label} · ${stockText}` : stockText}
+                    <span className="text-sm font-semibold tabular-nums leading-none">
+                      {v.label}
+                    </span>
+                    <span
+                      className={`mt-1 text-[10px] font-medium leading-none ${
+                        soldOut
+                          ? "text-neutral-400"
+                          : selected
+                            ? "text-[#4B0A6B]/80"
+                            : "text-neutral-500"
+                      }`}
+                    >
+                      {soldOut ? "Sold out" : `${v.stock} left`}
+                    </span>
                   </button>
                 );
               })}
@@ -371,36 +390,50 @@ export default function ProductDetailClient({ product }: { product: Product }) {
               Color{" "}
               {hasOptions ? <span className="font-normal text-red-600">*</span> : null}
             </p>
-            <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2" role="radiogroup" aria-label="Color">
+            <div
+              className="mt-3 flex flex-wrap gap-2"
+              role="radiogroup"
+              aria-label="Color"
+            >
               {availableColors.map((entry) => {
                 const selected = color === entry.color;
                 const label = colorDisplayName(entry.color);
                 const soldOut = entry.stock <= 0;
-                const stockText = soldOut ? "sold out" : `${entry.stock} in stock`;
                 return (
                   <button
                     key={entry.color}
                     type="button"
                     role="radio"
                     aria-checked={selected}
-                    aria-label={`${label} · ${stockText}`}
+                    aria-label={
+                      soldOut
+                        ? `${label}, sold out`
+                        : `${label}, ${entry.stock} in stock`
+                    }
                     disabled={soldOut}
                     onClick={() => {
                       setColor(entry.color);
                       setLimitMsg("");
                     }}
-                    className={`inline-flex items-center gap-2 bg-transparent p-0 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                    className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                       selected
-                        ? "font-semibold text-[#4B0A6B] underline underline-offset-4"
-                        : "font-medium text-neutral-800 hover:text-[#4B0A6B]"
+                        ? "border-[#4B0A6B] bg-[#F8F1FA] font-semibold text-[#4B0A6B]"
+                        : "border-neutral-200 bg-white font-medium text-neutral-800 hover:border-[#4B0A6B]/50"
                     }`}
                   >
                     <span
                       className="h-4 w-4 shrink-0 rounded-full border border-neutral-300"
-                      style={{ backgroundColor: colorSwatchBackground(entry.color) }}
+                      style={{
+                        backgroundColor: colorSwatchBackground(entry.color),
+                      }}
                     />
-                    <span>
-                      {label} · {stockText}
+                    <span>{label}</span>
+                    <span
+                      className={`text-[11px] font-medium ${
+                        soldOut ? "text-neutral-400" : "text-neutral-500"
+                      }`}
+                    >
+                      {soldOut ? "Sold out" : `${entry.stock} left`}
                     </span>
                   </button>
                 );
